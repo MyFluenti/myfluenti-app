@@ -1,0 +1,28 @@
+# Dependências e build
+node_modules/
+.expo/
+dist/
+web-build/
+android/
+ios/
+
+# Segredos e ambiente
+.env
+.env.*
+!.env.example
+
+# Credenciais e builds nativos
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Gerados
+src/types/database.ts
+
+# SO e editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
