@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  Platform,
   Pressable,
   StyleSheet,
   TextInput,
@@ -119,6 +120,11 @@ export function Input({
   );
 }
 
+// Na web, remove o contorno nativo do <input>; o foco é indicado pela borda do container.
+const webNoOutline = (
+  Platform.OS === 'web' ? { outlineStyle: 'none', outlineWidth: 0 } : {}
+) as object;
+
 const styles = StyleSheet.create({
   wrapper: { gap: spacing.sm },
   field: {
@@ -138,6 +144,7 @@ const styles = StyleSheet.create({
     fontFamily: typography.bodyL.fontFamily,
     fontSize: typography.bodyL.fontSize,
     paddingVertical: 0,
+    ...webNoOutline,
   },
   toggle: {
     minHeight: layout.minTouchTarget,
