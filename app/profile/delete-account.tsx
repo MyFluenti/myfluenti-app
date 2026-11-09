@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { AccessibilityInfo, Pressable, StyleSheet, View } from 'react-native';
 
 import { Button, Icon, Input, Text } from '@/components';
 import { useAuth } from '@/features/auth/AuthProvider';
@@ -26,20 +26,34 @@ export default function DeleteAccountScreen() {
   const [typed, setTyped] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | undefined>();
+  // Quando a RPC pode ter concluído e só a resposta se perdeu (rede ou erro desconhecido).
+  const [uncertain, setUncertain] = useState(false);
+  const busy = useRef(false);
 
   const canDelete = typed === CONFIRM_WORD && !deleting;
 
   const handleDelete = async () => {
-    if (!canDelete) return;
+    if (!canDelete || busy.current) return;
+    busy.current = true;
     setError(undefined);
+    setUncertain(false);
     setDeleting(true);
     try {
       await deleteAccount();
       // A sessão foi descartada: o guard do layout já leva à entrada de login.
       notify('Conta excluída', 'Sua conta e seus dados foram excluídos.');
     } catch (e) {
-      setError(toAppError(e).message);
+      const appError = toAppError(e);
+      const isUncertain = appError.kind === 'network' || appError.kind === 'unknown';
+      const message = isUncertain
+        ? 'Não conseguimos confirmar a exclusão. Tente de novo.'
+        : appError.message;
+      setUncertain(isUncertain);
+      setError(message);
+      // accessibilityLiveRegion só vale no Android.
+      AccessibilityInfo.announceForAccessibility(message);
       setDeleting(false);
+      busy.current = false;
     }
   };
 
@@ -97,7 +111,9 @@ export default function DeleteAccountScreen() {
                 {error}
               </Text>
               <Text variant="caption" color="textSecondary">
-                Sua conta não foi excluída. Você pode tentar de novo.
+                {uncertain
+                  ? 'Se a exclusão já tiver sido concluída, a nova tentativa confirma.'
+                  : 'Sua conta não foi excluída. Você pode tentar de novo.'}
               </Text>
             </View>
           ) : null}
