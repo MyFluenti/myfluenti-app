@@ -1,0 +1,64 @@
+name: App checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: app-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck-and-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      # Mesmo layout de pastas do ambiente local: lado a lado.
+      - name: Checkout app
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: myfluenti-app
+          persist-credentials: false
+
+      - name: Checkout backend (repo público; fonte do schema para os tipos)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: MyFluenti/myfluenti-backend
+          ref: main
+          path: myfluenti-backend
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: myfluenti-app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: myfluenti-app
+        run: npm ci
+
+      # src/types/database.ts é gerado e fica no .gitignore, então o CI precisa
+      # do schema para gerá-lo. Sobe só o Postgres. O `gen types --local` roda o
+      # postgres-meta em contêiner avulso (confirmado: funciona sem ele na stack).
+      - name: Start local Supabase (database only)
+        working-directory: myfluenti-backend
+        run: >-
+          npx -y supabase@2.121.0 start
+          -x realtime,storage-api,imgproxy,mailpit,studio,edge-runtime,logflare,vector,supavisor,kong,gotrue,postgrest,postgres-meta
+
+      - name: Generate database types
+        working-directory: myfluenti-app
+        run: npm run gen:types
+
+      - name: Typecheck
+        working-directory: myfluenti-app
+        run: npx tsc --noEmit
+
+      - name: Lint
+        working-directory: myfluenti-app
+        run: npx expo lint
