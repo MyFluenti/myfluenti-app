@@ -86,6 +86,9 @@ export const layout = {
   iconStroke: 2,
   inputHeight: 52,
   lessonRowMinHeight: 64,
+  borderWidth: 1,
+  avatarSize: 64,
+  formItemMinWidth: 100,
 } as const;
 
 // Opacidade só para feedback de toque (pressed). Estado desabilitado usa cores, não opacidade.

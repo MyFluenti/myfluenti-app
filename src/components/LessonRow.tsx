@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { colors, layout, opacity, radius, spacing, type ColorToken } from '@/theme/tokens';
 
+import { joinLabel } from './a11y';
 import { Icon } from './icons';
 import { Text } from './Text';
 
@@ -48,7 +49,7 @@ export function LessonRow({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Aula ${position}: ${title}. ${subtitle}`}
+      accessibilityLabel={joinLabel(`Aula ${position}: ${title}`, subtitle)}
       accessibilityState={{ disabled: locked }}
       disabled={locked}
       onPress={onPress}
@@ -84,7 +85,7 @@ const styles = StyleSheet.create({
   base: {
     minHeight: layout.lessonRowMinHeight,
     borderRadius: radius.lg,
-    borderWidth: 1,
+    borderWidth: layout.borderWidth,
     backgroundColor: colors.bgSurface,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,

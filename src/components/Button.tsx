@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
     height: layout.buttonHeight,
     minHeight: layout.minTouchTarget,
     borderRadius: radius.md,
-    borderWidth: 1,
+    borderWidth: layout.borderWidth,
     paddingHorizontal: spacing.xl,
     alignItems: 'center',
     justifyContent: 'center',

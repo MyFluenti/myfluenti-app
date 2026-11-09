@@ -3,6 +3,11 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 
 import {
   AnswerOption,
+  ContentBlocks,
+  QuestionPromptData,
+  TextAnswerInput,
+  WordOrderAnswer,
+  joinTokens,
   Badge,
   BottomNav,
   Button,
@@ -22,6 +27,38 @@ import { colors, layout, radius, spacing } from '@/theme/tokens';
 
 const noop = () => {};
 
+const sampleBlocks = {
+  v: 1,
+  blocks: [
+    { type: 'paragraph', text: 'No Present Simple, usamos o verbo base. Com he, she e it, acrescentamos -s.' },
+    {
+      type: 'structure',
+      label: 'Afirmativa',
+      formula: 'subject + verb (+ s)',
+      examples: [
+        { en: 'She works here.', pt: 'Ela trabalha aqui.', note: 'he, she, it + s', vocabulary_example_id: null },
+        { en: 'I work here.', pt: 'Eu trabalho aqui.' },
+      ],
+    },
+    { type: 'tip', text: 'Compare sempre o sujeito com o verbo antes de escolher a forma.' },
+    { type: 'common_mistake', wrong: 'She work here.', right: 'She works here.', note: 'Com she, o verbo leva -s.' },
+    { type: 'video', url: 'bloco desconhecido, ignorado' },
+    { type: 'comparison', rows: [{ en: 'I eat.', pt: 'Eu como.' }, { en: 'He eats.', pt: 'Ele come.', note: 'terceira pessoa' }] },
+  ],
+};
+
+const sampleItems = {
+  v: 1,
+  items: [
+    { en: 'I have eaten.', pt: 'Eu comi.', note: 'Present Perfect', vocabulary_example_id: 'ex-1' },
+    { en: 'She has left.', pt: 'Ela saiu.', note: null, vocabulary_example_id: null },
+  ],
+};
+
+const sampleRows = { v: 1, rows: [{ en: 'much', pt: 'incontável', note: 'água' }, { en: 'many', pt: 'contável' }] };
+
+const WORD_TOKENS = ['the', 'sat', 'cat', 'on', 'the', 'mat'];
+
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <View style={styles.section}>
@@ -38,6 +75,9 @@ export function ComponentShowcase() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('Gabriel');
   const [nav, setNav] = useState('index');
+  const [fillAnswer, setFillAnswer] = useState('');
+  const [translationAnswer, setTranslationAnswer] = useState('');
+  const [order, setOrder] = useState<string[]>(['the']);
 
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content}>
@@ -175,6 +215,51 @@ export function ComponentShowcase() {
         <View style={styles.box}>
           <PremiumState onSeePlan={noop} />
         </View>
+      </Section>
+
+      <Section title="ContentBlocks (v1)">
+        <ContentBlocks
+          content={sampleBlocks}
+          renderItemAccessory={(item) =>
+            item.vocabulary_example_id ? <Text variant="caption" color="brandPrimaryLight">Favoritar</Text> : null
+          }
+        />
+        <Text variant="label" color="textSecondary">items</Text>
+        <ContentBlocks
+          content={sampleItems}
+          renderItemAccessory={(item) =>
+            item.vocabulary_example_id ? <Text variant="caption" color="brandPrimaryLight">Favoritar</Text> : null
+          }
+        />
+        <Text variant="label" color="textSecondary">rows</Text>
+        <ContentBlocks content={sampleRows} />
+        <Text variant="label" color="textSecondary">v2 (não renderiza nada)</Text>
+        <ContentBlocks content={{ v: 2, blocks: [{ type: 'paragraph', text: 'oculto' }] }} />
+      </Section>
+
+      <Section title="Questões de texto">
+        <TextAnswerInput
+          questionType="fill_blank"
+          promptData={{ v: 1, sentence: 'I ___ a book yesterday.', blank_hint: 'verbo read no passado' }}
+          value={fillAnswer}
+          onChangeText={setFillAnswer}
+          placeholder="Digite a palavra"
+        />
+        <TextAnswerInput
+          questionType="translation"
+          promptData={{ v: 1, source_lang: 'pt', text: 'Eu gosto de café.' }}
+          value={translationAnswer}
+          onChangeText={setTranslationAnswer}
+          placeholder="Escreva em inglês"
+        />
+        <TextAnswerInput value="Bloqueado" onChangeText={noop} disabled />
+        <QuestionPromptData questionType="fill_blank" promptData={{ v: 1 }} />
+      </Section>
+
+      <Section title="WordOrderAnswer">
+        <WordOrderAnswer tokens={WORD_TOKENS} value={order} onChange={setOrder} />
+        <Text variant="caption" color="textSecondary">{`Enviaria: ${joinTokens(order)}`}</Text>
+        <WordOrderAnswer tokens={WORD_TOKENS} value={['the', 'cat']} onChange={noop} disabled />
       </Section>
 
       <Section title="BottomNav">
