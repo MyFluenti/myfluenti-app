@@ -1,18 +1,15 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import {
-  Alert,
-  Pressable,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import {
   Badge,
+  ContentBlocks,
   Icon,
   ProgressBar,
   Text,
 } from '@/components';
+import { notify } from '@/features/common/dialogs';
 import { Screen } from '@/features/common/Screen';
 import { useLibraryItem } from '@/features/library/useLibraryItem';
 import {
@@ -45,7 +42,7 @@ export default function LibraryItemDetailScreen() {
       await toggleWordFavorite(vocabId, nextVal);
     } catch (e) {
       setWordFavorite(currentVal);
-      Alert.alert('Erro ao favoritar', toAppError(e).message);
+      notify('Erro ao favoritar', toAppError(e).message);
     }
   };
 
@@ -60,7 +57,7 @@ export default function LibraryItemDetailScreen() {
       }
     } catch (e) {
       setFavoriteExamples((prev) => ({ ...prev, [exampleId]: currentVal }));
-      Alert.alert('Erro ao favoritar frase', toAppError(e).message);
+      notify('Erro ao favoritar frase', toAppError(e).message);
     }
   };
 
@@ -134,12 +131,7 @@ export default function LibraryItemDetailScreen() {
                   </View>
                 )}
 
-                {/* Exibição do conteúdo explicativo se disponível */}
-                {typeof grammar.content === 'string' && grammar.content.length > 0 && (
-                  <View style={styles.card}>
-                    <Text variant="bodyL">{grammar.content}</Text>
-                  </View>
-                )}
+                <ContentBlocks content={grammar.content} />
               </View>
             )}
 
@@ -310,7 +302,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgElevated,
     borderRadius: radius.md,
     padding: spacing.md,
-    minWidth: 100,
+    minWidth: layout.formItemMinWidth,
     gap: spacing.xs,
   },
   examplesList: {
