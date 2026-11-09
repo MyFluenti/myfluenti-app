@@ -11,7 +11,9 @@ export type IconName =
   | 'profile'
   | 'check'
   | 'close'
-  | 'lock';
+  | 'lock'
+  | 'arrow-left'
+  | 'chevron-right';
 
 export type IconProps = {
   name: IconName;
@@ -77,6 +79,8 @@ export function Icon({ name, color = 'textPrimary', size = layout.iconSize }: Ic
           <Path d="M8 11V7a4 4 0 0 1 8 0v4" />
         </>
       )}
+      {name === 'arrow-left' && <Path d="M19 12H5M12 5l-7 7 7 7" />}
+      {name === 'chevron-right' && <Path d="M9 18l6-6-6-6" />}
     </Svg>
     </View>
   );
