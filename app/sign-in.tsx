@@ -5,10 +5,12 @@ import { View } from 'react-native';
 import { Button, Input, Text } from '@/components';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { AuthScreen, authStyles } from '@/features/auth/AuthScreen';
+import { useScrollFocusedFieldIntoView } from '@/features/common/KeyboardAwareScreen';
 import { toAppError } from '@/services/errors';
 
 export default function SignInScreen() {
   const { signIn } = useAuth();
+  const scrollIntoView = useScrollFocusedFieldIntoView();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | undefined>();
@@ -43,6 +45,7 @@ export default function SignInScreen() {
           value={email}
           onChangeText={setEmail}
           editable={!loading}
+          onFocus={scrollIntoView}
         />
         <Input
           label="Senha"
@@ -50,6 +53,7 @@ export default function SignInScreen() {
           value={password}
           onChangeText={setPassword}
           editable={!loading}
+          onFocus={scrollIntoView}
           error={error}
           onSubmitEditing={canSubmit ? submit : undefined}
         />

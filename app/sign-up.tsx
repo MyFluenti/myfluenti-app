@@ -5,10 +5,12 @@ import { View } from 'react-native';
 import { Button, Input, Text } from '@/components';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { AuthScreen, authStyles } from '@/features/auth/AuthScreen';
+import { useScrollFocusedFieldIntoView } from '@/features/common/KeyboardAwareScreen';
 import { toAppError } from '@/services/errors';
 
 export default function SignUpScreen() {
   const { signUp } = useAuth();
+  const scrollIntoView = useScrollFocusedFieldIntoView();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -44,13 +46,20 @@ export default function SignUpScreen() {
         Entenda como o inglês funciona.
       </Text>
       <View style={authStyles.form}>
-        <Input label="Nome (opcional)" value={name} onChangeText={setName} editable={!loading} />
+        <Input
+          label="Nome (opcional)"
+          value={name}
+          onChangeText={setName}
+          editable={!loading}
+          onFocus={scrollIntoView}
+        />
         <Input
           label="E-mail"
           type="email"
           value={email}
           onChangeText={setEmail}
           editable={!loading}
+          onFocus={scrollIntoView}
         />
         <Input
           label="Senha"
@@ -58,6 +67,7 @@ export default function SignUpScreen() {
           value={password}
           onChangeText={setPassword}
           editable={!loading}
+          onFocus={scrollIntoView}
           error={error}
         />
         {notice ? (
