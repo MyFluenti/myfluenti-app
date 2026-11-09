@@ -26,3 +26,21 @@ src/types/database.ts
 Thumbs.db
 .vscode/
 .idea/
+
+# Template do Expo
+expo-env.d.ts
+.kotlin/
+*.orig.*
+.metro-health-check*
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+*.pem
+.env*.local
+*.tsbuildinfo
+example
+/ios
+/android
+
+# Config local do Claude Code
+.claude/

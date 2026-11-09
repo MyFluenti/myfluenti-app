@@ -38,29 +38,69 @@ export const radius = {
   full: 999,
 } as const;
 
+// Nomes exatos das famílias registradas por peso (expo-font / @expo-google-fonts).
+// No Android e no iOS, 'Manrope' + fontWeight não encontra a fonte: use sempre estes nomes.
+export const fontFamilies = {
+  manrope: {
+    400: 'Manrope_400Regular',
+    600: 'Manrope_600SemiBold',
+    700: 'Manrope_700Bold',
+    800: 'Manrope_800ExtraBold',
+  },
+  inter: {
+    400: 'Inter_400Regular',
+    500: 'Inter_500Medium',
+    600: 'Inter_600SemiBold',
+  },
+} as const;
+
+// Mantido por compatibilidade (nome lógico das famílias). Não use como fontFamily.
 export const fonts = {
   display: 'Manrope',
   text: 'Inter',
 } as const;
 
+// Sem fontWeight: o peso já está embutido no nome da família.
 export const typography = {
-  display: { fontFamily: fonts.display, fontWeight: '700', fontSize: 28, lineHeight: 36 },
-  heading1: { fontFamily: fonts.display, fontWeight: '700', fontSize: 24, lineHeight: 32 },
-  heading2: { fontFamily: fonts.display, fontWeight: '600', fontSize: 20, lineHeight: 28 },
-  heading3: { fontFamily: fonts.display, fontWeight: '600', fontSize: 17, lineHeight: 24 },
-  button: { fontFamily: fonts.display, fontWeight: '600', fontSize: 16, lineHeight: 20 },
-  bodyL: { fontFamily: fonts.text, fontWeight: '400', fontSize: 16, lineHeight: 24 },
-  bodyM: { fontFamily: fonts.text, fontWeight: '400', fontSize: 14, lineHeight: 20 },
-  label: { fontFamily: fonts.text, fontWeight: '600', fontSize: 13, lineHeight: 16 },
-  caption: { fontFamily: fonts.text, fontWeight: '500', fontSize: 12, lineHeight: 16 },
+  display: { fontFamily: fontFamilies.manrope[700], fontSize: 28, lineHeight: 36 },
+  heading1: { fontFamily: fontFamilies.manrope[700], fontSize: 24, lineHeight: 32 },
+  heading2: { fontFamily: fontFamilies.manrope[600], fontSize: 20, lineHeight: 28 },
+  heading3: { fontFamily: fontFamilies.manrope[600], fontSize: 17, lineHeight: 24 },
+  button: { fontFamily: fontFamilies.manrope[600], fontSize: 16, lineHeight: 20 },
+  bodyL: { fontFamily: fontFamilies.inter[400], fontSize: 16, lineHeight: 24 },
+  bodyM: { fontFamily: fontFamilies.inter[400], fontSize: 14, lineHeight: 20 },
+  label: { fontFamily: fontFamilies.inter[600], fontSize: 13, lineHeight: 16 },
+  caption: { fontFamily: fontFamilies.inter[500], fontSize: 12, lineHeight: 16 },
 } as const;
+
+export type ColorToken = keyof typeof colors;
+export type TypographyVariant = keyof typeof typography;
 
 export const layout = {
   screenPaddingX: spacing.xl,
   buttonHeight: 52,
   bottomNavHeight: 72,
   minTouchTarget: 44,
+  progressHeight: 8,
+  iconSize: 24,
+  iconStroke: 2,
+  inputHeight: 52,
+  lessonRowMinHeight: 64,
 } as const;
 
-export const theme = { colors, spacing, radius, fonts, typography, layout } as const;
+// Opacidade só para feedback de toque (pressed). Estado desabilitado usa cores, não opacidade.
+export const opacity = {
+  pressed: 0.85,
+} as const;
+
+export const theme = {
+  colors,
+  spacing,
+  radius,
+  fonts,
+  fontFamilies,
+  typography,
+  layout,
+  opacity,
+} as const;
 export type Theme = typeof theme;
