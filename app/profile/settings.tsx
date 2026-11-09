@@ -1,66 +1,57 @@
+import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import {
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, Icon, Text } from '@/components';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { confirm } from '@/features/common/dialogs';
 import { colors, layout, opacity, radius, spacing } from '@/theme/tokens';
+
+/** Linha desabilitada: o recurso ainda não existe. Sem promessa de funcionalidade. */
+function ComingSoonRow({ label }: { label: string }) {
+  return (
+    <View
+      style={styles.settingsRow}
+      accessible
+      accessibilityLabel={`${label}, em breve`}
+      accessibilityState={{ disabled: true }}
+    >
+      <Text variant="bodyL" color="textSecondary">
+        {label}
+      </Text>
+      <Text variant="caption" color="textSecondary">
+        Em breve
+      </Text>
+    </View>
+  );
+}
 
 export default function SettingsScreen() {
   const router = useRouter();
   const { signOut } = useAuth();
   const [leaving, setLeaving] = useState(false);
+  const version = Constants.expoConfig?.version ?? '—';
 
-  const leave = () => {
-    Alert.alert('Sair da conta', 'Tem certeza que deseja sair do MyFluenti?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Sair',
-        style: 'destructive',
-        onPress: async () => {
-          setLeaving(true);
-          try {
-            await signOut();
-          } catch {
-            setLeaving(false);
-          }
-        },
-      },
-    ]);
-  };
-
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      'Excluir conta e dados',
-      'Esta ação é permanente e irreversível. Em conformidade com a LGPD, todo o seu histórico de estudo, notas e favoritos serão excluídos em cascata.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir definitivamente',
-          style: 'destructive',
-          onPress: async () => {
-            setLeaving(true);
-            try {
-              await signOut();
-            } catch {
-              setLeaving(false);
-            }
-          },
-        },
-      ],
-    );
+  const leave = async () => {
+    const ok = await confirm({
+      title: 'Sair da conta',
+      message: 'Tem certeza que deseja sair do MyFluenti?',
+      confirmLabel: 'Sair',
+      destructive: true,
+    });
+    if (!ok) return;
+    setLeaving(true);
+    try {
+      await signOut();
+    } catch {
+      setLeaving(false);
+    }
   };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      {/* Barra superior de navegação */}
       <View style={styles.topNav}>
         <Pressable
           accessibilityRole="button"
@@ -76,129 +67,39 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Seção 1: Preferências */}
         <View style={styles.card}>
           <Text variant="caption" color="textSecondary">
             PREFERÊNCIAS
           </Text>
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Notificações"
-            onPress={() =>
-              Alert.alert(
-                'Notificações',
-                'Lembretes diários de revisão e novos conteúdos estão ativados no aparelho.',
-              )
-            }
-            style={({ pressed }) => [
-              styles.settingsRow,
-              { opacity: pressed ? opacity.pressed : 1 },
-            ]}
-          >
-            <Text variant="bodyL">Notificações</Text>
-            <Icon name="chevron-right" color="textSecondary" size={layout.iconSize} />
-          </Pressable>
-
+          <ComingSoonRow label="Notificações" />
           <View style={styles.divider} />
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Idioma da interface"
-            onPress={() =>
-              Alert.alert('Idioma', 'O idioma da interface é Português (Brasil).')
-            }
-            style={({ pressed }) => [
-              styles.settingsRow,
-              { opacity: pressed ? opacity.pressed : 1 },
-            ]}
-          >
-            <Text variant="bodyL">Idioma da interface</Text>
-            <View style={styles.settingsRowRight}>
-              <Text variant="caption" color="textSecondary">
-                Português
-              </Text>
-              <Icon name="chevron-right" color="textSecondary" size={layout.iconSize} />
-            </View>
-          </Pressable>
+          <ComingSoonRow label="Idioma da interface" />
         </View>
 
-        {/* Seção 2: Sobre e Legal */}
         <View style={styles.card}>
           <Text variant="caption" color="textSecondary">
             LEGAL E SUPORTE
           </Text>
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Política de privacidade"
-            onPress={() =>
-              Alert.alert(
-                'Privacidade (LGPD)',
-                'Seus dados pertencem a você. Suas tentativas, respostas e notas não são comercializadas nem compartilhadas com terceiros.',
-              )
-            }
-            style={({ pressed }) => [
-              styles.settingsRow,
-              { opacity: pressed ? opacity.pressed : 1 },
-            ]}
-          >
-            <Text variant="bodyL">Política de privacidade</Text>
-            <Icon name="chevron-right" color="textSecondary" size={layout.iconSize} />
-          </Pressable>
-
+          <ComingSoonRow label="Política de privacidade" />
           <View style={styles.divider} />
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Termos de uso"
-            onPress={() =>
-              Alert.alert(
-                'Termos de uso',
-                'MyFluenti — Understand. Practice. Evolve. Versão 1.0.0.',
-              )
-            }
-            style={({ pressed }) => [
-              styles.settingsRow,
-              { opacity: pressed ? opacity.pressed : 1 },
-            ]}
-          >
-            <Text variant="bodyL">Termos de uso</Text>
-            <Icon name="chevron-right" color="textSecondary" size={layout.iconSize} />
-          </Pressable>
-
+          <ComingSoonRow label="Termos de uso" />
           <View style={styles.divider} />
-
           <View style={styles.settingsRow}>
             <Text variant="bodyL">Versão do aplicativo</Text>
             <Text variant="caption" color="textSecondary">
-              1.0.0 (MVP)
+              {version}
             </Text>
           </View>
         </View>
 
-        {/* Seção 3: Ações da conta */}
         <View style={styles.actionsSection}>
-          <Button
-            label="Sair da conta"
-            variant="secondary"
-            onPress={leave}
-            loading={leaving}
-          />
+          <Button label="Sair da conta" variant="secondary" onPress={leave} loading={leaving} />
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Excluir minha conta e dados"
-            onPress={handleDeleteAccount}
-            style={({ pressed }) => [
-              styles.dangerButton,
-              { opacity: pressed ? opacity.pressed : 1 },
-            ]}
-          >
-            <Text variant="button" color="statusError">
-              Excluir minha conta e dados
-            </Text>
-          </Pressable>
+          {/* A exclusão de conta ainda não existe no backend: sem ação e sem promessa. */}
+          <Button label="Excluir minha conta e dados" variant="secondary" disabled />
+          <Text variant="caption" color="textSecondary">
+            Em breve.
+          </Text>
         </View>
       </ScrollView>
     </SafeAreaView>

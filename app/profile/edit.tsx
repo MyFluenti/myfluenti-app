@@ -1,15 +1,10 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import {
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, Icon, Input, LoadingState, Text } from '@/components';
+import { notify } from '@/features/common/dialogs';
 import { useProfileSummary } from '@/features/profile/useProfileSummary';
 import { updateProfile } from '@/services/profile';
 import { toAppError } from '@/services/errors';
@@ -42,14 +37,11 @@ function EditProfileForm({ initialName, email }: EditFormProps) {
     setSaving(true);
     try {
       await updateProfile({ display_name: trimmed });
-      Alert.alert('Perfil atualizado', 'Suas alterações foram salvas com sucesso.', [
-        {
-          text: 'OK',
-          onPress: () => router.back(),
-        },
-      ]);
+      // Volta direto: na web o aviso é bloqueante e o fluxo não pode depender do callback dele.
+      router.back();
+      notify('Perfil atualizado', 'Suas alterações foram salvas.');
     } catch (e) {
-      Alert.alert('Erro ao atualizar', toAppError(e).message);
+      notify('Erro ao atualizar', toAppError(e).message);
     } finally {
       setSaving(false);
     }
