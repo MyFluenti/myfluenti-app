@@ -1,12 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import {
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -18,8 +12,12 @@ import {
   LoadingState,
   ProgressBar,
   Text,
+  TextAnswerInput,
+  WordOrderAnswer,
+  joinTokens,
 } from '@/components';
 import type { AnswerOptionState } from '@/components/AnswerOption';
+import { confirm, notify } from '@/features/common/dialogs';
 import {
   finishReviewSession,
   getReviewQueue,
@@ -31,10 +29,32 @@ import {
 import { toAppError, type AppError } from '@/services/errors';
 import { colors, layout, opacity, radius, spacing } from '@/theme/tokens';
 import type {
+  AnswerPayload,
   ReviewAnswerResult,
   ReviewQueueItem,
   ReviewSummary,
 } from '@/types/contract';
+
+type AnswerMode = 'options' | 'text' | 'word_order';
+
+type ReviewQuestion = Extract<ReviewQueueItem, { item_type: 'question' }>['question'];
+
+/** Tokens de word_order exatamente como vieram do backend (sem reordenar). */
+function wordOrderTokens(q: ReviewQuestion): string[] | null {
+  const tokens = (q.prompt_data as { tokens?: unknown } | null | undefined)?.tokens;
+  return Array.isArray(tokens) && tokens.length > 0 && tokens.every((t) => typeof t === 'string')
+    ? (tokens as string[])
+    : null;
+}
+
+/** Só escolhe o componente de entrada pelo tipo; quem corrige é o backend. */
+function answerModeOf(q: ReviewQuestion): AnswerMode {
+  if (q.question_type === 'word_order' && wordOrderTokens(q)) return 'word_order';
+  if (q.question_type === 'fill_blank' || q.question_type === 'translation') return 'text';
+  // multiple_choice, error_identification, error_correction e tipos desconhecidos:
+  // opções se houver, senão campo de texto.
+  return q.options.length > 0 ? 'options' : 'text';
+}
 
 export default function ReviewSessionScreen() {
   const router = useRouter();
@@ -47,9 +67,13 @@ export default function ReviewSessionScreen() {
 
   // Estado da questão atual
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
+  const [textAnswer, setTextAnswer] = useState('');
+  const [tokenAnswer, setTokenAnswer] = useState<string[]>([]);
   const [submittingAnswer, setSubmittingAnswer] = useState(false);
   const [answerResult, setAnswerResult] = useState<ReviewAnswerResult | null>(null);
   const [recordingResult, setRecordingResult] = useState(false);
+  // Backend pediu o botão (rating_required): mostra Difícil/Bom/Fácil para a questão atual.
+  const [needsRating, setNeedsRating] = useState(false);
 
   // Resumo final
   const [summary, setSummary] = useState<ReviewSummary | null>(null);
@@ -64,7 +88,10 @@ export default function ReviewSessionScreen() {
       setItems(queue.items);
       setCurrentIndex(0);
       setSelectedOptionId(null);
+      setTextAnswer('');
+      setTokenAnswer([]);
       setAnswerResult(null);
+      setNeedsRating(false);
     } catch (e) {
       setError(toAppError(e));
     } finally {
@@ -77,29 +104,28 @@ export default function ReviewSessionScreen() {
     void initSession();
   }, [initSession]);
 
-  const confirmExit = () => {
+  const confirmExit = async () => {
     if (summary) {
       router.replace('/practice');
       return;
     }
-    Alert.alert(
-      'Sair da revisão?',
-      'Os itens que você já avaliou foram salvos.',
-      [
-        { text: 'Continuar revisando', style: 'cancel' },
-        {
-          text: 'Sair',
-          style: 'destructive',
-          onPress: () => router.replace('/practice'),
-        },
-      ],
-    );
+    const ok = await confirm({
+      title: 'Sair da revisão?',
+      message: 'Os itens que você já avaliou foram salvos.',
+      confirmLabel: 'Sair',
+      cancelLabel: 'Continuar revisando',
+      destructive: true,
+    });
+    if (ok) router.replace('/practice');
   };
 
   const handleNext = useCallback(
     async (nextIdx: number, sid: string) => {
       setSelectedOptionId(null);
+      setTextAnswer('');
+      setTokenAnswer([]);
       setAnswerResult(null);
+      setNeedsRating(false);
 
       if (nextIdx < items.length) {
         setCurrentIndex(nextIdx);
@@ -119,20 +145,82 @@ export default function ReviewSessionScreen() {
     [items.length],
   );
 
+  /**
+   * Erros do contrato tratados pelo código, sem Alert genérico:
+   * - already_reviewed: o item já foi avaliado nesta sessão, avança.
+   * - session_closed: a sessão fechou (finalizada em outro lugar), reinicia.
+   * - rating_required: o backend exige o botão, mostra Difícil/Bom/Fácil.
+   * Devolve true se tratou o erro.
+   */
+  const handleSessionError = (e: unknown, sid: string, nextIdx: number): boolean => {
+    const err = toAppError(e);
+    if (err.kind === 'rating_required') {
+      setNeedsRating(true);
+      return true;
+    }
+    if (err.code === 'already_reviewed') {
+      void handleNext(nextIdx, sid);
+      return true;
+    }
+    if (err.code === 'session_closed') {
+      void initSession();
+      return true;
+    }
+    return false;
+  };
+
+  // A questão já foi respondida nesta sessão (ex.: o app foi fechado no meio).
+  // O app não sabe se acertou e não decide: tenta gravar como erro (sem rating).
+  // Se o backend responder rating_required, a resposta estava certa e ele pede o
+  // botão; se aceitar, o item foi gravado e segue para o próximo.
+  const resolveAlreadyAnswered = async (sid: string, questionId: string) => {
+    try {
+      await recordReviewResult(sid, { type: 'question', id: questionId }, { answered: 'incorrect' });
+      await handleNext(currentIndex + 1, sid);
+    } catch (e) {
+      if (!handleSessionError(e, sid, currentIndex + 1)) {
+        notify('Erro ao gravar', toAppError(e).message);
+      }
+    }
+  };
+
   // Envia a resposta da questão
+  /** "Responder" só habilita com resposta: opção escolhida, texto não vazio ou 1+ token. */
+  const canSubmit = (q: ReviewQuestion): boolean => {
+    const mode = answerModeOf(q);
+    if (mode === 'options') return selectedOptionId !== null;
+    if (mode === 'word_order') return tokenAnswer.length >= 1;
+    return textAnswer.trim().length > 0;
+  };
+
   const handleSubmitAnswer = async () => {
-    if (!sessionId || !selectedOptionId) return;
     const currentItem = items[currentIndex];
-    if (currentItem?.item_type !== 'question') return;
+    if (!sessionId || currentItem?.item_type !== 'question') return;
+
+    const mode = answerModeOf(currentItem.question);
+    let payload: AnswerPayload;
+    if (mode === 'options') {
+      if (!selectedOptionId) return;
+      payload = { option_id: selectedOptionId };
+    } else if (mode === 'word_order') {
+      if (tokenAnswer.length === 0) return;
+      payload = { text: joinTokens(tokenAnswer) };
+    } else {
+      if (textAnswer.trim().length === 0) return;
+      payload = { text: textAnswer.trim() };
+    }
 
     setSubmittingAnswer(true);
     try {
-      const res = await submitReviewAnswer(sessionId, currentItem.question.id, {
-        option_id: selectedOptionId,
-      });
+      const res = await submitReviewAnswer(sessionId, currentItem.question.id, payload);
       setAnswerResult(res);
     } catch (e) {
-      Alert.alert('Erro ao enviar', toAppError(e).message);
+      const err = toAppError(e);
+      if (err.code === 'already_answered') {
+        await resolveAlreadyAnswered(sessionId, currentItem.question.id);
+      } else if (!handleSessionError(e, sessionId, currentIndex + 1)) {
+        notify('Erro ao enviar', err.message);
+      }
     } finally {
       setSubmittingAnswer(false);
     }
@@ -153,7 +241,9 @@ export default function ReviewSessionScreen() {
       );
       await handleNext(currentIndex + 1, sessionId);
     } catch (e) {
-      Alert.alert('Erro ao gravar', toAppError(e).message);
+      if (!handleSessionError(e, sessionId, currentIndex + 1)) {
+        notify('Erro ao gravar', toAppError(e).message);
+      }
     } finally {
       setRecordingResult(false);
     }
@@ -174,7 +264,9 @@ export default function ReviewSessionScreen() {
       );
       await handleNext(currentIndex + 1, sessionId);
     } catch (e) {
-      Alert.alert('Erro ao gravar', toAppError(e).message);
+      if (!handleSessionError(e, sessionId, currentIndex + 1)) {
+        notify('Erro ao gravar', toAppError(e).message);
+      }
     } finally {
       setRecordingResult(false);
     }
@@ -203,7 +295,9 @@ export default function ReviewSessionScreen() {
       }
       await handleNext(currentIndex + 1, sessionId);
     } catch (e) {
-      Alert.alert('Erro ao gravar', toAppError(e).message);
+      if (!handleSessionError(e, sessionId, currentIndex + 1)) {
+        notify('Erro ao gravar', toAppError(e).message);
+      }
     } finally {
       setRecordingResult(false);
     }
@@ -354,43 +448,96 @@ export default function ReviewSessionScreen() {
               {currentItem.question.prompt}
             </Text>
 
-            <View style={styles.optionsList}>
-              {currentItem.question.options
-                .slice()
-                .sort((a, b) => a.position - b.position)
-                .map((opt) => {
-                  let optState: AnswerOptionState = 'normal';
-                  const isSelected = selectedOptionId === opt.id;
+            {(() => {
+              const q = currentItem.question;
+              const mode = answerModeOf(q);
+              const locked = answerResult !== null || submittingAnswer || needsRating;
 
-                  if (answerResult) {
-                    if (isSelected) {
-                      optState = answerResult.is_correct ? 'correct' : 'incorrect';
-                    }
-                  } else if (isSelected) {
-                    optState = 'selected';
-                  }
+              if (mode === 'word_order') {
+                return (
+                  <WordOrderAnswer
+                    tokens={wordOrderTokens(q) ?? []}
+                    value={tokenAnswer}
+                    onChange={setTokenAnswer}
+                    disabled={locked}
+                  />
+                );
+              }
 
-                  return (
-                    <AnswerOption
-                      key={opt.id}
-                      label={opt.text}
-                      state={optState}
-                      disabled={answerResult !== null || submittingAnswer}
-                      onPress={() => setSelectedOptionId(opt.id)}
-                    />
-                  );
-                })}
-            </View>
+              if (mode === 'text') {
+                return (
+                  <TextAnswerInput
+                    value={textAnswer}
+                    onChangeText={setTextAnswer}
+                    disabled={locked}
+                    questionType={q.question_type}
+                    promptData={q.prompt_data}
+                  />
+                );
+              }
+
+              return (
+                <View style={styles.optionsList}>
+                  {q.options
+                    .slice()
+                    .sort((x, y) => x.position - y.position)
+                    .map((opt) => {
+                      let optState: AnswerOptionState = 'normal';
+                      const isSelected = selectedOptionId === opt.id;
+
+                      if (answerResult) {
+                        if (isSelected) {
+                          optState = answerResult.is_correct ? 'correct' : 'incorrect';
+                        }
+                      } else if (isSelected) {
+                        optState = 'selected';
+                      }
+
+                      return (
+                        <AnswerOption
+                          key={opt.id}
+                          label={opt.text}
+                          state={optState}
+                          disabled={locked}
+                          onPress={() => setSelectedOptionId(opt.id)}
+                        />
+                      );
+                    })}
+                </View>
+              );
+            })()}
 
             {/* Ação antes da resposta: botão Responder */}
-            {!answerResult && (
+            {!answerResult && !needsRating && (
               <View style={styles.actionContainer}>
                 <Button
                   label="Responder"
-                  disabled={!selectedOptionId}
+                  disabled={!canSubmit(currentItem.question)}
                   loading={submittingAnswer}
                   onPress={handleSubmitAnswer}
                 />
+              </View>
+            )}
+
+            {/* O backend pediu o botão de uma questão já respondida nesta sessão */}
+            {!answerResult && needsRating && (
+              <View style={styles.ratingSection}>
+                <Text variant="bodyM" color="textSecondary">
+                  Você já respondeu esta questão nesta sessão.
+                </Text>
+                <Text variant="heading3">Como foi lembrar disso?</Text>
+                <View style={styles.ratingRow}>
+                  {(['hard', 'good', 'easy'] as const).map((r) => (
+                    <View key={r} style={styles.ratingCol}>
+                      <Button
+                        label={r === 'hard' ? 'Difícil' : r === 'good' ? 'Bom' : 'Fácil'}
+                        variant="secondary"
+                        loading={recordingResult}
+                        onPress={() => handleRateQuestionCorrect(r)}
+                      />
+                    </View>
+                  ))}
+                </View>
               </View>
             )}
 
@@ -426,7 +573,7 @@ export default function ReviewSessionScreen() {
                 </View>
 
                 {/* Acerto: 3 botões (Difícil, Bom, Fácil) */}
-                {answerResult.is_correct ? (
+                {answerResult.is_correct || needsRating ? (
                   <View style={styles.ratingSection}>
                     <Text variant="heading3">Como foi lembrar disso?</Text>
                     <View style={styles.ratingRow}>
@@ -687,8 +834,8 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
   },
   summaryBadge: {
-    width: 64,
-    height: 64,
+    width: layout.avatarSize,
+    height: layout.avatarSize,
     borderRadius: radius.full,
     backgroundColor: colors.statusSuccessSubtle,
     borderWidth: 1,
