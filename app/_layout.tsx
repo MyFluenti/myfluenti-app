@@ -48,6 +48,8 @@ function RootNavigator() {
         <Stack.Screen name="course/[moduleId]" />
         <Stack.Screen name="library/[type]/[id]" />
         <Stack.Screen name="review/session" />
+        <Stack.Screen name="profile/settings" />
+        <Stack.Screen name="profile/edit" />
         <Stack.Screen name="dev/showcase" />
       </Stack.Protected>
       <Stack.Protected guard={!signedIn}>
