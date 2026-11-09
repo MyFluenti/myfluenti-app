@@ -46,6 +46,7 @@ function RootNavigator() {
       <Stack.Protected guard={signedIn}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="course/[moduleId]" />
+        <Stack.Screen name="review/session" />
         <Stack.Screen name="dev/showcase" />
       </Stack.Protected>
       <Stack.Protected guard={!signedIn}>
