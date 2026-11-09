@@ -2,7 +2,7 @@ import { useEffect, type ReactNode } from 'react';
 import { RefreshControl, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ErrorState, LoadingState, PremiumState } from '@/components';
+import { EmptyState, ErrorState, LoadingState, PremiumState } from '@/components';
 import { useAuth } from '@/features/auth/AuthProvider';
 import type { AsyncState } from '@/hooks/useAsync';
 import { colors, layout, spacing } from '@/theme/tokens';
@@ -36,6 +36,8 @@ export function Screen<T>({ state, children }: ScreenProps<T>) {
     body =
       error.kind === 'not_authenticated' ? (
         <LoadingState />
+      ) : error.kind === 'module_locked' ? (
+        <EmptyState title="Módulo bloqueado" message="Conclua o módulo anterior" />
       ) : error.kind === 'premium_required' ? (
         <PremiumState />
       ) : error.kind === 'network' ? (

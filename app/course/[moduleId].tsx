@@ -17,7 +17,7 @@ function toLessonStatus(status: string): LessonStatus {
 }
 
 export default function ModuleScreen() {
-  const { moduleId } = useLocalSearchParams<{ moduleId: string }>();
+  const { moduleId, title } = useLocalSearchParams<{ moduleId: string; title?: string }>();
   const router = useRouter();
   const state = useModuleLessons(moduleId);
 
@@ -36,7 +36,7 @@ export default function ModuleScreen() {
               <Icon name="arrow-left" color="textPrimary" size={layout.iconSize} />
             </Pressable>
             <Text variant="heading2" style={styles.headerTitle}>
-              Aulas
+              {title || 'Aulas'}
             </Text>
           </View>
 

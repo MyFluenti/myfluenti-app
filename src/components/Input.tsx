@@ -10,6 +10,7 @@ import {
 
 import { colors, layout, radius, spacing, typography } from '@/theme/tokens';
 
+import { joinLabel } from './a11y';
 import { Icon } from './icons';
 import { Text } from './Text';
 
@@ -34,6 +35,7 @@ export function Input({
   onFocus,
   onBlur,
   secureTextEntry,
+  accessibilityLabel,
   ...rest
 }: InputProps) {
   const [focused, setFocused] = useState(false);
@@ -42,6 +44,7 @@ export function Input({
   const isPassword = type === 'password' || secureTextEntry === true;
   const hidden = isPassword && !revealed;
   const isFocused = focused || forceFocused;
+  const disabled = rest.editable === false;
   // empty | focused | filled
   const borderColor = error
     ? colors.statusError
@@ -74,13 +77,13 @@ export function Input({
       <Text variant="label" color="textSecondary">
         {label}
       </Text>
-      <View style={[styles.field, { borderColor }]}>
+      <View style={[styles.field, { borderColor }, disabled && styles.fieldDisabled]}>
         <TextInput
           {...typeProps}
           {...rest}
           value={value}
           secureTextEntry={hidden}
-          accessibilityLabel={error ? `${label}. ${error}` : label}
+          accessibilityLabel={accessibilityLabel ?? joinLabel(label, error)}
           placeholderTextColor={colors.textSecondary}
           selectionColor={colors.brandPrimary}
           cursorColor={colors.brandPrimary}
@@ -130,13 +133,14 @@ const styles = StyleSheet.create({
   field: {
     minHeight: layout.inputHeight,
     borderRadius: radius.md,
-    borderWidth: 1,
+    borderWidth: layout.borderWidth,
     backgroundColor: colors.bgSurface,
     paddingHorizontal: spacing.lg,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
   },
+  fieldDisabled: { backgroundColor: colors.bgElevated },
   input: {
     flex: 1,
     minHeight: layout.minTouchTarget,

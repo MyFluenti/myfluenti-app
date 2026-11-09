@@ -27,6 +27,7 @@ export type AppErrorInfo =
   | { kind: 'weak_password' }
   | { kind: 'email_taken' }
   | { kind: 'invalid_email' }
+  | { kind: 'invalid_display_name' }
   | { kind: 'known'; code: KnownCode }
   | { kind: 'unknown'; code?: string };
 
@@ -58,6 +59,7 @@ const MESSAGES: Record<Exclude<AppErrorKind, 'known'>, string> = {
   weak_password: 'Senha fraca. Use pelo menos 6 caracteres.',
   email_taken: 'Este e-mail já tem conta. Entre ou recupere a senha.',
   invalid_email: 'E-mail inválido.',
+  invalid_display_name: 'O nome deve ter entre 1 e 60 caracteres.',
   unknown: 'Algo deu errado. Tente de novo em instantes.',
 };
 
@@ -138,6 +140,10 @@ export function toAppError(error: unknown): AppError {
   const anonDenied = code === '42501' && /^permission denied for function/i.test(message);
   if (code === '28000' || code === 'PGRST301' || status === 401 || anonDenied) {
     return new AppError({ kind: 'not_authenticated' });
+  }
+  // Check do perfil (profiles_display_name_len): 23514.
+  if (code === '23514' && message.includes('profiles_display_name_len')) {
+    return new AppError({ kind: 'invalid_display_name' });
   }
   if (isKnownCode(message)) return new AppError({ kind: 'known', code: message });
 

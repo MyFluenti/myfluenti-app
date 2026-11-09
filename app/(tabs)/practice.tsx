@@ -28,9 +28,6 @@ export default function PracticeScreen() {
                   <Text variant="heading1">
                     {queue.due_count === 1 ? '1 item para hoje' : `${queue.due_count} itens para hoje`}
                   </Text>
-                  <Text variant="bodyM" color="textSecondary">
-                    Tempo estimado: {Math.max(1, Math.round(queue.due_count * 0.5))} min
-                  </Text>
                 </View>
                 <Button
                   label="Começar revisão"

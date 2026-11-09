@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { colors, layout, opacity, radius, spacing } from '@/theme/tokens';
 
+import { joinLabel } from './a11y';
 import { Badge } from './Badge';
 import { Icon } from './icons';
 import { ProgressBar, clampProgress } from './ProgressBar';
@@ -45,7 +46,7 @@ export function ModuleCard({ title, description, status, progress = 0, onPress }
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${title}. ${description}. ${statusLabel}`}
+      accessibilityLabel={joinLabel(title, description, statusLabel)}
       accessibilityState={{ disabled: locked }}
       disabled={locked}
       onPress={onPress}
@@ -80,7 +81,7 @@ const styles = StyleSheet.create({
   base: {
     minHeight: layout.minTouchTarget,
     borderRadius: radius.lg,
-    borderWidth: 1,
+    borderWidth: layout.borderWidth,
     backgroundColor: colors.bgSurface,
     padding: spacing.lg,
     gap: spacing.md,

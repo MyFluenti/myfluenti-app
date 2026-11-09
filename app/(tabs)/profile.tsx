@@ -1,25 +1,24 @@
 import { Link, useRouter } from 'expo-router';
-import {
-  Alert,
-  Pressable,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Badge, Button, Icon, Text } from '@/components';
+import { notify } from '@/features/common/dialogs';
 import { Screen } from '@/features/common/Screen';
 import { useProfileSummary } from '@/features/profile/useProfileSummary';
-import { colors, layout, opacity, radius, spacing } from '@/theme/tokens';
+import { colors, layout, opacity, radius, spacing, typography } from '@/theme/tokens';
 
-function getInitials(name: string | null, email: string): string {
-  if (name && name.trim()) {
-    const parts = name.trim().split(/\s+/);
+/** Iniciais do nome; sem nome, do e-mail; sem nenhum dos dois, "?". */
+function getInitials(name: string | null | undefined, email: string | null | undefined): string {
+  const trimmed = name?.trim();
+  if (trimmed) {
+    const parts = trimmed.split(/\s+/);
     if (parts.length >= 2) {
       return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
     }
     return parts[0].slice(0, 2).toUpperCase();
   }
-  return email.slice(0, 2).toUpperCase();
+  const fromEmail = email?.trim().slice(0, 2).toUpperCase();
+  return fromEmail || '?';
 }
 
 export default function ProfileScreen() {
@@ -100,18 +99,16 @@ export default function ProfileScreen() {
               </View>
 
               <Text variant="bodyM" color="textSecondary">
-                Refazer o teste de nivelamento diagnostica seu conhecimento atual sem alterar seu nível em estudo.
+                {p.placement.completed
+                  ? 'Refazer o teste de nivelamento diagnostica seu conhecimento atual sem alterar seu nível em estudo.'
+                  : 'O teste de nivelamento ajuda a descobrir por onde começar.'}
               </Text>
 
+              {/* TODO: abrir o nivelamento quando a rota existir. */}
               <Button
-                label="Refazer teste de nivelamento"
+                label={p.placement.completed ? 'Refazer o teste de nivelamento' : 'Fazer o nivelamento'}
                 variant="outline"
-                onPress={() =>
-                  Alert.alert(
-                    'Nivelamento',
-                    'O teste de nivelamento completo de 30 questões estará disponível na próxima atualização.',
-                  )
-                }
+                onPress={() => notify('Nivelamento', 'O teste de nivelamento estará disponível em breve.')}
               />
             </View>
 
@@ -129,22 +126,11 @@ export default function ProfileScreen() {
                 <Badge variant={isPremium ? 'premium' : 'free'} />
               </View>
 
-              <Text variant="bodyM" color="textSecondary">
-                {isPremium
-                  ? 'Você tem acesso livre a todos os níveis, módulos, biblioteca completa e revisão ilimitada.'
-                  : 'Acesso às aulas introdutórias e biblioteca essencial.'}
-              </Text>
-
               {!isPremium && (
                 <Button
                   label="Conhecer o Premium"
                   variant="secondary"
-                  onPress={() =>
-                    Alert.alert(
-                      'Plano Premium',
-                      'O fluxo de upgrade e planos estará disponível em breve.',
-                    )
-                  }
+                  onPress={() => notify('Plano Premium', 'A assinatura ainda não está disponível no app.')}
                 />
               )}
             </View>
@@ -234,8 +220,8 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
   },
   avatar: {
-    width: 64,
-    height: 64,
+    width: layout.avatarSize,
+    height: layout.avatarSize,
     borderRadius: radius.full,
     backgroundColor: colors.brandPrimarySubtle,
     borderWidth: 1,
@@ -289,7 +275,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   masteryDisclaimer: {
-    lineHeight: 18,
+    lineHeight: typography.caption.lineHeight,
   },
   divider: {
     height: 1,

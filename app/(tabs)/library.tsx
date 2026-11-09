@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import {
   Badge,
   EmptyState,
+  Icon,
   Input,
   ProgressBar,
   Text,
@@ -132,7 +133,9 @@ export default function LibraryScreen() {
                   <Pressable
                     key={item.id}
                     accessibilityRole="button"
-                    accessibilityLabel={`${item.title}. ${item.subtitle ?? ''}`}
+                    accessibilityLabel={[item.title, item.subtitle, item.locked ? 'Disponível no plano Premium' : null]
+                      .filter(Boolean)
+                      .join('. ')}
                     onPress={() =>
                       router.push({
                         pathname: '/library/[type]/[id]',
@@ -148,7 +151,12 @@ export default function LibraryScreen() {
                       <Text variant="heading3" style={styles.cardTitle}>
                         {item.title}
                       </Text>
-                      <Badge variant={item.access_tier === 'premium' ? 'premium' : 'free'} />
+                      <View style={styles.badges}>
+                        {item.locked ? (
+                          <Icon name="lock" color="brandPrimaryLight" size={spacing.lg} />
+                        ) : null}
+                        <Badge variant={item.access_tier === 'premium' ? 'premium' : 'free'} />
+                      </View>
                     </View>
 
                     {item.subtitle ? (
@@ -232,6 +240,11 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     flex: 1,
+  },
+  badges: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   masteryContainer: {
     marginTop: spacing.xs,

@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
   base: {
     minHeight: layout.inputHeight,
     borderRadius: radius.md,
-    borderWidth: 1,
+    borderWidth: layout.borderWidth,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     flexDirection: 'row',

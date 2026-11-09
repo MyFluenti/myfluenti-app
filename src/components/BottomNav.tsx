@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     backgroundColor: colors.bgSurface,
-    borderTopWidth: 1,
+    borderTopWidth: layout.borderWidth,
     borderTopColor: colors.borderDefault,
   },
   item: {
