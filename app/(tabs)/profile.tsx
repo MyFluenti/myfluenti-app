@@ -1,5 +1,4 @@
-import { Link } from 'expo-router';
-import { useState } from 'react';
+import { Link, useRouter } from 'expo-router';
 import {
   Alert,
   Pressable,
@@ -8,7 +7,6 @@ import {
 } from 'react-native';
 
 import { Badge, Button, Icon, Text } from '@/components';
-import { useAuth } from '@/features/auth/AuthProvider';
 import { Screen } from '@/features/common/Screen';
 import { useProfileSummary } from '@/features/profile/useProfileSummary';
 import { colors, layout, opacity, radius, spacing } from '@/theme/tokens';
@@ -25,50 +23,8 @@ function getInitials(name: string | null, email: string): string {
 }
 
 export default function ProfileScreen() {
-  const { signOut } = useAuth();
+  const router = useRouter();
   const state = useProfileSummary();
-  const [leaving, setLeaving] = useState(false);
-
-  const leave = async () => {
-    Alert.alert('Sair da conta', 'Tem certeza que deseja sair do MyFluenti?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Sair',
-        style: 'destructive',
-        onPress: async () => {
-          setLeaving(true);
-          try {
-            await signOut();
-          } catch {
-            setLeaving(false);
-          }
-        },
-      },
-    ]);
-  };
-
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      'Excluir conta e dados',
-      'Esta ação é permanente e irreversível. Em conformidade com a LGPD, todo o seu histórico de estudo, notas e favoritos serão excluídos em cascata.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir definitivamente',
-          style: 'destructive',
-          onPress: async () => {
-            setLeaving(true);
-            try {
-              // Desconecta a sessão atual
-              await signOut();
-            } catch {
-              setLeaving(false);
-            }
-          },
-        },
-      ],
-    );
-  };
 
   return (
     <Screen state={state}>
@@ -78,26 +34,47 @@ export default function ProfileScreen() {
 
         return (
           <View style={styles.container}>
-            {/* Título da tela */}
-            <Text variant="display" accessibilityRole="header">
-              Perfil
-            </Text>
+            {/* Cabeçalho com Título e Engrenagem de Configurações */}
+            <View style={styles.headerRow}>
+              <Text variant="display" accessibilityRole="header">
+                Perfil
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Abrir configurações"
+                onPress={() => router.push('/profile/settings')}
+                style={({ pressed }) => [
+                  styles.settingsButton,
+                  { opacity: pressed ? opacity.pressed : 1 },
+                ]}
+              >
+                <Icon name="settings" color="textPrimary" size={layout.iconSize} />
+              </Pressable>
+            </View>
 
-            {/* Cabeçalho do usuário */}
-            <View style={styles.userHeader}>
-              <View style={styles.avatar}>
-                <Text variant="heading2" color="brandPrimaryLight">
-                  {initials}
-                </Text>
+            {/* Cabeçalho do usuário com botão Editar Perfil */}
+            <View style={styles.userCard}>
+              <View style={styles.userHeader}>
+                <View style={styles.avatar}>
+                  <Text variant="heading2" color="brandPrimaryLight">
+                    {initials}
+                  </Text>
+                </View>
+                <View style={styles.userInfo}>
+                  <Text variant="heading2" numberOfLines={1}>
+                    {p.display_name ?? 'Estudante'}
+                  </Text>
+                  <Text variant="bodyM" color="textSecondary" numberOfLines={1}>
+                    {p.email}
+                  </Text>
+                </View>
               </View>
-              <View style={styles.userInfo}>
-                <Text variant="heading2" numberOfLines={1}>
-                  {p.display_name ?? 'Estudante'}
-                </Text>
-                <Text variant="bodyM" color="textSecondary" numberOfLines={1}>
-                  {p.email}
-                </Text>
-              </View>
+
+              <Button
+                label="Editar perfil"
+                variant="outline"
+                onPress={() => router.push('/profile/edit')}
+              />
             </View>
 
             {/* Card: Seu nível atual */}
@@ -210,117 +187,6 @@ export default function ProfileScreen() {
               </Text>
             </View>
 
-            {/* Lista de configurações */}
-            <View style={styles.card}>
-              <Text variant="heading3" style={styles.settingsTitle}>
-                Configurações
-              </Text>
-
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Notificações"
-                onPress={() =>
-                  Alert.alert(
-                    'Notificações',
-                    'Lembretes diários de revisão e novos conteúdos estão ativados.',
-                  )
-                }
-                style={({ pressed }) => [
-                  styles.settingsRow,
-                  { opacity: pressed ? opacity.pressed : 1 },
-                ]}
-              >
-                <Text variant="bodyL">Notificações</Text>
-                <Icon name="chevron-right" color="textSecondary" size={layout.iconSize} />
-              </Pressable>
-
-              <View style={styles.divider} />
-
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Idioma da interface"
-                onPress={() =>
-                  Alert.alert('Idioma', 'O idioma da interface é Português (Brasil).')
-                }
-                style={({ pressed }) => [
-                  styles.settingsRow,
-                  { opacity: pressed ? opacity.pressed : 1 },
-                ]}
-              >
-                <Text variant="bodyL">Idioma da interface</Text>
-                <View style={styles.settingsRowRight}>
-                  <Text variant="caption" color="textSecondary">
-                    Português
-                  </Text>
-                  <Icon name="chevron-right" color="textSecondary" size={layout.iconSize} />
-                </View>
-              </Pressable>
-
-              <View style={styles.divider} />
-
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Política de privacidade"
-                onPress={() =>
-                  Alert.alert(
-                    'Privacidade (LGPD)',
-                    'Seus dados pertencem a você. Suas tentativas, respostas e notas não são comercializadas nem compartilhadas com terceiros.',
-                  )
-                }
-                style={({ pressed }) => [
-                  styles.settingsRow,
-                  { opacity: pressed ? opacity.pressed : 1 },
-                ]}
-              >
-                <Text variant="bodyL">Política de privacidade</Text>
-                <Icon name="chevron-right" color="textSecondary" size={layout.iconSize} />
-              </Pressable>
-
-              <View style={styles.divider} />
-
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Termos de uso"
-                onPress={() =>
-                  Alert.alert(
-                    'Termos de uso',
-                    'MyFluenti — Understand. Practice. Evolve. Versão 1.0.',
-                  )
-                }
-                style={({ pressed }) => [
-                  styles.settingsRow,
-                  { opacity: pressed ? opacity.pressed : 1 },
-                ]}
-              >
-                <Text variant="bodyL">Termos de uso</Text>
-                <Icon name="chevron-right" color="textSecondary" size={layout.iconSize} />
-              </Pressable>
-            </View>
-
-            {/* Ações da conta */}
-            <View style={styles.actionsSection}>
-              <Button
-                label="Sair da conta"
-                variant="secondary"
-                onPress={leave}
-                loading={leaving}
-              />
-
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Excluir minha conta e dados"
-                onPress={handleDeleteAccount}
-                style={({ pressed }) => [
-                  styles.dangerButton,
-                  { opacity: pressed ? opacity.pressed : 1 },
-                ]}
-              >
-                <Text variant="button" color="statusError">
-                  Excluir minha conta e dados
-                </Text>
-              </Pressable>
-            </View>
-
             {/* Showcase link em DEV */}
             {__DEV__ ? (
               <View style={styles.devLinkContainer}>
@@ -342,6 +208,25 @@ const styles = StyleSheet.create({
   container: {
     gap: spacing.xl,
     paddingBottom: spacing['3xl'],
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  settingsButton: {
+    minWidth: layout.minTouchTarget,
+    minHeight: layout.minTouchTarget,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  userCard: {
+    backgroundColor: colors.bgSurface,
+    borderColor: colors.borderDefault,
+    borderWidth: 1,
+    borderRadius: radius.lg,
+    padding: spacing.xl,
+    gap: spacing.lg,
   },
   userHeader: {
     flexDirection: 'row',
@@ -406,38 +291,9 @@ const styles = StyleSheet.create({
   masteryDisclaimer: {
     lineHeight: 18,
   },
-  settingsTitle: {
-    marginBottom: spacing.xs,
-  },
-  settingsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    minHeight: layout.minTouchTarget,
-    paddingVertical: spacing.xs,
-  },
-  settingsRowRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
   divider: {
     height: 1,
     backgroundColor: colors.borderDefault,
-  },
-  actionsSection: {
-    gap: spacing.md,
-    marginTop: spacing.sm,
-  },
-  dangerButton: {
-    height: layout.buttonHeight,
-    minHeight: layout.minTouchTarget,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.statusError,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
   },
   devLinkContainer: {
     alignItems: 'center',
