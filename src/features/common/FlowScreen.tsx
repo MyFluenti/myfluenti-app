@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ComponentRef, ReactNode, Ref } from 'react';
 import { KeyboardAvoidingView, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -12,19 +12,28 @@ export type FlowScreenProps = {
   footer?: ReactNode;
   /** Centraliza o conteúdo na vertical quando sobra espaço. */
   centered?: boolean;
+  /** Ref do ScrollView do conteúdo (ex.: rolar até um campo). */
+  scrollRef?: Ref<ComponentRef<typeof ScrollView>>;
 };
 
 /**
  * Casca das telas de fluxo em etapas (boas-vindas, autoavaliação, nivelamento):
  * cabeçalho fixo, conteúdo rolável e ações no rodapé, como nas telas 01, 02, 03, 14 e 16.
  */
-export function FlowScreen({ header, children, footer, centered = false }: FlowScreenProps) {
+export function FlowScreen({
+  header,
+  children,
+  footer,
+  centered = false,
+  scrollRef,
+}: FlowScreenProps) {
   const insets = useSafeAreaInsets();
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <KeyboardAvoidingView style={styles.flex} behavior="padding" keyboardVerticalOffset={insets.top}>
         {header ? <View style={styles.header}>{header}</View> : null}
         <ScrollView
+          ref={scrollRef}
           style={styles.flex}
           contentContainerStyle={[styles.content, centered && styles.centered]}
           keyboardShouldPersistTaps="handled"

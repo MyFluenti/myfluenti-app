@@ -13,6 +13,7 @@ import {
   Text,
 } from '@/components';
 import { confirm, notify } from '@/features/common/dialogs';
+import { AnswerFeedback } from '@/features/questions/AnswerFeedback';
 import { QuestionAnswerInput } from '@/features/questions/QuestionAnswerInput';
 import {
   EMPTY_DRAFT,
@@ -434,30 +435,7 @@ export default function ReviewSessionScreen() {
             )}
 
             {/* Explicação devolvida pela RPC. O gabarito nunca vem para o app. */}
-            {answerResult && (
-              <View
-                style={[
-                  styles.feedbackCard,
-                  answerResult.is_correct ? styles.feedbackSuccess : styles.feedbackError,
-                ]}
-              >
-                <Text
-                  variant="heading3"
-                  color={answerResult.is_correct ? 'statusSuccess' : 'statusError'}
-                >
-                  {answerResult.is_correct
-                    ? answerResult.explanation
-                      ? 'Certo! Veja por quê'
-                      : 'Certo!'
-                    : 'Incorreto'}
-                </Text>
-                {answerResult.explanation ? (
-                  <Text variant="bodyM" color="textPrimary">
-                    {answerResult.explanation}
-                  </Text>
-                ) : null}
-              </View>
-            )}
+            {answerResult && <AnswerFeedback result={answerResult} />}
           </View>
         )}
 
@@ -568,20 +546,6 @@ const styles = StyleSheet.create({
   },
   feedbackSection: {
     gap: spacing.lg,
-  },
-  feedbackCard: {
-    borderWidth: 1,
-    borderRadius: radius.md,
-    padding: spacing.lg,
-    gap: spacing.sm,
-  },
-  feedbackSuccess: {
-    backgroundColor: colors.statusSuccessSubtle,
-    borderColor: colors.statusSuccess,
-  },
-  feedbackError: {
-    backgroundColor: colors.statusErrorSubtle,
-    borderColor: colors.statusError,
   },
   feedbackHeader: {
     flexDirection: 'row',

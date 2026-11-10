@@ -69,6 +69,8 @@ function RootNavigator() {
       <Stack.Protected guard={onboarded} redirectTo={home}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="course/[moduleId]" />
+        <Stack.Screen name="lesson/[attemptId]" />
+        <Stack.Screen name="lesson/result" options={{ gestureEnabled: false }} />
         <Stack.Screen name="library/[type]/[id]" />
         <Stack.Screen name="review/session" />
         <Stack.Screen name="profile/settings" />
@@ -83,7 +85,7 @@ function RootNavigator() {
       </Stack.Protected>
       <Stack.Protected guard={signedIn} redirectTo={home}>
         <Stack.Screen name="placement/intro" />
-        <Stack.Screen name="placement/[attemptId]" options={{ gestureEnabled: false }} />
+        <Stack.Screen name="placement/[attemptId]" />
         <Stack.Screen name="placement/result" options={{ gestureEnabled: false }} />
       </Stack.Protected>
       <Stack.Protected guard={!signedIn} redirectTo={home}>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ComponentRef, type Ref } from 'react';
 import {
   Platform,
   Pressable,
@@ -26,6 +26,8 @@ export type InputProps = Omit<TextInputProps, 'style' | 'placeholderTextColor'> 
   forceFocused?: boolean;
   /** Esconde o rótulo visual; ele continua como accessibilityLabel (ex.: campo de busca). */
   hideLabel?: boolean;
+  /** Ref do TextInput (ex.: focar o campo a partir de outro botão). */
+  ref?: Ref<ComponentRef<typeof TextInput>>;
 };
 
 export function Input({
@@ -39,6 +41,7 @@ export function Input({
   onBlur,
   secureTextEntry,
   accessibilityLabel,
+  ref,
   ...rest
 }: InputProps) {
   const [focused, setFocused] = useState(false);
@@ -82,6 +85,7 @@ export function Input({
       )}
       <View style={[styles.field, { borderColor, borderWidth: isFocused || error ? layout.borderWidthStrong : layout.borderWidth }, disabled && styles.fieldDisabled]}>
         <TextInput
+          ref={ref}
           {...typeProps}
           {...rest}
           value={value}

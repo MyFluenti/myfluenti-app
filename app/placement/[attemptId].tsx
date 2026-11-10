@@ -1,10 +1,10 @@
-import { useLocalSearchParams, usePreventRemove, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Button, ErrorState, Icon, LoadingState, ProgressBar, Text } from '@/components';
-import { confirm } from '@/features/common/dialogs';
 import { FlowScreen } from '@/features/common/FlowScreen';
+import { useExitGuard } from '@/features/common/useExitGuard';
 import { placementErrorMessage } from '@/features/onboarding/messages';
 import { QuestionAnswerInput } from '@/features/questions/QuestionAnswerInput';
 import {
@@ -44,51 +44,6 @@ export default function PlacementQuestionScreen() {
   // Tentativa já encerrada: o resultado está gravado, só mostra.
   const closed = state.error?.kind === 'known' && state.error.code === 'attempt_closed';
 
-  // Qualquer saída (X ou voltar do Android) pede confirmação, mas só com o teste carregado
-  // (no erro de carregamento não há respostas a proteger). Ir para o resultado não pede.
-  const [leaving, setLeaving] = useState(false);
-  // Um diálogo por vez: toque duplo no X (ou X + voltar) não empilha confirmações.
-  const asking = useRef(false);
-  const disablePrevention = usePreventRemove(
-    !leaving && !closed && state.data !== null,
-    ({ repeat }) => {
-      if (asking.current) return;
-      asking.current = true;
-      void confirm({
-        title: 'Sair do teste?',
-        message: 'Suas respostas ficam salvas. Quando voltar, você continua de onde parou.',
-        confirmLabel: 'Sair',
-        cancelLabel: 'Continuar o teste',
-      })
-        .then((ok) => {
-          if (!ok) return;
-          setLeaving(true);
-          repeat();
-        })
-        .finally(() => {
-          asking.current = false;
-        });
-    },
-  );
-
-  const replaceWithResult = useCallback(
-    () => router.replace({ pathname: '/placement/result', params: { attemptId } }),
-    [router, attemptId],
-  );
-  const goToResult = useCallback(() => {
-    setLeaving(true);
-    disablePrevention();
-    replaceWithResult();
-  }, [disablePrevention, replaceWithResult]);
-
-  // Com a tentativa encerrada a proteção já está desligada (`closed`); o
-  // disablePrevention só garante a ordem, como em goToResult.
-  useEffect(() => {
-    if (!closed) return;
-    disablePrevention();
-    replaceWithResult();
-  }, [closed, disablePrevention, replaceWithResult]);
-
   const data = state.data;
   const pending = useMemo(
     () => (data ? data.items.filter((i) => !i.answered && !answeredNow.has(i.question.id)) : []),
@@ -98,7 +53,35 @@ export default function PlacementQuestionScreen() {
   const total = data?.items.length ?? 0;
   const answered = total - pending.length;
 
-  // A confirmação vem do usePreventRemove.
+  // Toda pergunta pede confirmação para sair (✕, voltar do Android, gesto do iOS):
+  // "Sair" só descarta a resposta ainda não enviada. Ir para o resultado não pede.
+  const { sheet, allowLeave } = useExitGuard(!closed && current !== null, 'test');
+
+  const replaceWithResult = useCallback(
+    () => router.replace({ pathname: '/placement/result', params: { attemptId } }),
+    [router, attemptId],
+  );
+  // Se o aluno já saiu (ex.: "Sair" enquanto a última resposta ainda era enviada), a
+  // resposta que chega depois não leva ninguém ao resultado. A tentativa fica gravada.
+  const onScreen = useRef(true);
+  useEffect(
+    () => () => {
+      onScreen.current = false;
+    },
+    [],
+  );
+  const goToResult = useCallback(() => {
+    if (!onScreen.current) return;
+    allowLeave();
+    replaceWithResult();
+  }, [allowLeave, replaceWithResult]);
+
+  // Com a tentativa encerrada a proteção já está desligada (`closed`).
+  useEffect(() => {
+    if (closed) replaceWithResult();
+  }, [closed, replaceWithResult]);
+
+  // A confirmação vem do useExitGuard (a navegação bloqueada abre a folha).
   const exit = () => {
     if (router.canGoBack()) router.back();
     else router.replace('/');
@@ -270,6 +253,7 @@ export default function PlacementQuestionScreen() {
           Esta é a última questão. Depois dela, você vê o resultado.
         </Text>
       ) : null}
+      {sheet}
     </FlowScreen>
   );
 }

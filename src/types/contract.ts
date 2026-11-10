@@ -246,3 +246,56 @@ export type ProfileSummary = {
   favorites_count: number;
   notes_count: number;
 };
+
+// get_lesson_content (api.md, seção 9.1). O gabarito nunca vem: só a correção de
+// questões já respondidas nesta tentativa.
+export type LessonQuestionAnswer = {
+  is_correct: boolean;
+  awarded_points: number;
+  explanation: string | null;
+};
+
+export type LessonQuestion = {
+  id: string;
+  position: number;
+  question_type: string;
+  prompt: string;
+  prompt_data: unknown;
+  is_assessed: boolean;
+  max_points: number;
+  options: { id: string; text: string; position: number }[];
+  answer: LessonQuestionAnswer | null;
+};
+
+export type LessonSection = {
+  id: string;
+  position: number;
+  section_type: string;
+  title: string | null;
+  content: unknown;
+  is_required: boolean;
+  viewed: boolean;
+};
+
+export type LessonExercise = {
+  id: string;
+  position: number;
+  title: string | null;
+  instructions: string | null;
+  is_assessed: boolean;
+  questions: LessonQuestion[];
+};
+
+export type LessonContent = {
+  attempt: { id: string; status: string; lesson_version_id: string; version_number: number };
+  lesson: { id: string; module_id: string; position: number; title: string; objective: string | null };
+  sections: LessonSection[];
+  exercises: LessonExercise[];
+  other_questions: LessonQuestion[];
+  progress: {
+    sections_required: number;
+    sections_viewed: number;
+    questions_assessed: number;
+    questions_answered: number;
+  };
+};
