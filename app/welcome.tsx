@@ -12,7 +12,7 @@ export default function WelcomeScreen() {
   return (
     <FlowScreen centered>
       <View style={styles.brand}>
-        <LogoMark size={80} />
+        <LogoMark />
         <Text variant="display" accessibilityRole="header">
           MyFluenti
         </Text>

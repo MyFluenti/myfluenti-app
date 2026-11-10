@@ -8,6 +8,7 @@ import { FlowScreen } from '@/features/common/FlowScreen';
 import { placementErrorMessage } from '@/features/onboarding/messages';
 import { useOnboarding } from '@/features/onboarding/OnboardingProvider';
 import { useLeaveOnboarding } from '@/features/onboarding/useLeaveOnboarding';
+import { toAppError } from '@/services/errors';
 import { listLevels } from '@/services/levels';
 import * as placement from '@/services/placement';
 import { colors, layout, radius, spacing } from '@/theme/tokens';
@@ -62,6 +63,13 @@ export default function PlacementIntroScreen() {
     setError(undefined);
     setBusy('skip');
     try {
+      // Já terminou um teste (ex.: saiu antes de escolher o nível): o backend usa esse
+      // resultado como teto, então a escolha é feita na tela de resultado.
+      const finishedAttemptId = await placement.getLatestCompletedAttemptId();
+      if (finishedAttemptId) {
+        router.push({ pathname: '/placement/result', params: { attemptId: finishedAttemptId } });
+        return;
+      }
       const levels = await listLevels();
       const level = levels.find((l) => l.id === selfAssessedLevelId) ?? levels[0];
       if (!level) throw new Error('levels_empty');
@@ -72,7 +80,18 @@ export default function PlacementIntroScreen() {
         cancelLabel: 'Voltar',
       });
       if (!ok) return;
-      await complete(level.id);
+      try {
+        await complete(level.id);
+      } catch (e) {
+        // Nível sem aulas publicadas: o aluno pode fazer o teste ou trocar a autoavaliação.
+        if (toAppError(e).code === 'P0002') {
+          setError(
+            `O ${level.code} ainda não tem aulas publicadas. Faça o teste ou volte e escolha outro nível.`,
+          );
+          return;
+        }
+        throw e;
+      }
       leave();
     } catch (e) {
       setError(placementErrorMessage(e));

@@ -94,6 +94,8 @@ export const layout = {
   avatarSize: 64,
   avatarProfile: 112,
   avatarPreview: 160,
+  logoMarkSize: 80,
+  levelBadgeSize: 112,
   avatarTile: 60,
   formItemMinWidth: 100,
 } as const;

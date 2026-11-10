@@ -13,7 +13,10 @@ export function useLeaveOnboarding(): () => void {
   const [leaving, setLeaving] = useState(false);
 
   useEffect(() => {
-    if (leaving && status === 'done') router.replace('/');
+    if (!leaving || status !== 'done') return;
+    // Tira autoavaliação e nivelamento da pilha: o voltar no Início não reabre o fluxo.
+    if (router.canDismiss()) router.dismissAll();
+    router.replace('/');
   }, [leaving, status, router]);
 
   return () => setLeaving(true);

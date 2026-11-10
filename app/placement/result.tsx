@@ -42,7 +42,9 @@ export default function PlacementResultScreen() {
   const router = useRouter();
   const { attemptId } = useLocalSearchParams<{ attemptId: string }>();
   const { status, complete } = useOnboarding();
-  const onboarding = status !== 'done';
+  const [finishing, setFinishing] = useState(false);
+  // Mantém o modo de porta de entrada até sair da tela (o status vira done antes).
+  const onboarding = status !== 'done' || finishing;
   const leave = useLeaveOnboarding();
 
   const state = useAsync(
@@ -59,10 +61,12 @@ export default function PlacementResultScreen() {
   const start = async (level: Level) => {
     setError(undefined);
     setChoosing(level.id);
+    setFinishing(true);
     try {
       await complete(level.id, attemptId);
       leave();
     } catch (e) {
+      setFinishing(false);
       setError(placementErrorMessage(e));
     } finally {
       setChoosing(null);
@@ -200,7 +204,7 @@ export default function PlacementResultScreen() {
   );
 }
 
-const BADGE_SIZE = layout.avatarProfile;
+const BADGE_SIZE = layout.levelBadgeSize;
 
 const styles = StyleSheet.create({
   hero: { alignItems: 'center', gap: spacing.md, marginTop: spacing['2xl'] },

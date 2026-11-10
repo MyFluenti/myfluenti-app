@@ -60,7 +60,13 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
         if (!active) return;
         const appError = toAppError(e);
         if (appError.kind === 'not_authenticated') {
-          signOutLocal().catch(() => {});
+          // Volta às Boas-vindas. Se nem isso der certo, mostra o erro em vez do spinner.
+          signOutLocal().catch(() => {
+            if (!active) return;
+            setError(appError);
+            setStatus('error');
+            setLoadedFor(userId);
+          });
           return;
         }
         setError(appError);

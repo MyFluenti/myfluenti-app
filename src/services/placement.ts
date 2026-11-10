@@ -53,6 +53,22 @@ export async function getAttempt(attemptId: string): Promise<PlacementAttemptRow
   return result.data;
 }
 
+/**
+ * Última tentativa encerrada do aluno, se houver. Sem `p_placement_attempt_id`,
+ * `select_starting_level` usa essa tentativa como teto (não a autoavaliação).
+ */
+export async function getLatestCompletedAttemptId(): Promise<string | null> {
+  const result = await supabase
+    .from('user_placement_attempts')
+    .select('id')
+    .eq('status', 'completed')
+    .order('completed_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  assertOk(result);
+  return result.data?.id ?? null;
+}
+
 /** O backend recusa nível acima do recomendado. */
 export function selectStartingLevel(levelId: string, placementAttemptId?: string): Promise<void> {
   return rpcVoid('select_starting_level', {
@@ -60,4 +76,3 @@ export function selectStartingLevel(levelId: string, placementAttemptId?: string
     ...(placementAttemptId ? { p_placement_attempt_id: placementAttemptId } : {}),
   });
 }
-
