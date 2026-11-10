@@ -24,7 +24,7 @@ export function Avatar({
   const cfg = isValidAvatarConfig(config) ? config : DEFAULT;
   // O recorte circular é do View (clip: false), então o SVG não precisa de id único.
   const xml = useMemo(
-    () => render(cfg, size, { clip: false, label: accessibilityLabel }),
+    () => render(cfg, size, { clip: false, label: accessibilityLabel, a11yAttrs: false }),
     [cfg, size, accessibilityLabel],
   );
 
