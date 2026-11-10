@@ -234,8 +234,8 @@ const styles = StyleSheet.create({
   },
   editBadge: {
     position: 'absolute',
-    right: -spacing.xs,
-    bottom: -spacing.xs,
+    right: 0,
+    bottom: 0,
     width: layout.minTouchTarget,
     height: layout.minTouchTarget,
     borderRadius: radius.full,
