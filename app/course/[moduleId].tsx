@@ -1,12 +1,16 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { LessonRow, ProgressBar, Text } from '@/components';
+import { notify } from '@/features/common/dialogs';
 import type { LessonStatus } from '@/components/LessonRow';
 import { Screen } from '@/features/common/Screen';
 import { moduleTitle } from '@/features/course/format';
 import { useCourseOverview } from '@/features/course/useCourseOverview';
 import { useModuleLessons } from '@/features/course/useModuleLessons';
+import { toAppError } from '@/services/errors';
+import { startAttempt } from '@/services/lesson';
 import { layout, opacity, spacing } from '@/theme/tokens';
 
 /** Mapeia o `status` da RPC para o `LessonStatus` do componente. */
@@ -25,6 +29,39 @@ export default function ModuleScreen() {
   const overview = useCourseOverview();
   const current = overview.data?.find((m) => m.module_id === moduleId);
   const heading = (current ? moduleTitle(current) : title) || 'Aulas';
+
+  // Ao voltar de uma aula, atualiza status e progresso (sem piscar o loading).
+  const { refresh: refreshLessons } = state;
+  const { refresh: refreshOverview } = overview;
+  const focusedOnce = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (!focusedOnce.current) {
+        focusedOnce.current = true;
+        return;
+      }
+      refreshLessons();
+      refreshOverview();
+    }, [refreshLessons, refreshOverview]),
+  );
+
+  // Abre (ou retoma) a tentativa pelo backend, que valida módulo e plano.
+  const [opening, setOpening] = useState<string | null>(null);
+  const openLesson = async (lessonId: string) => {
+    if (opening) return;
+    setOpening(lessonId);
+    try {
+      const attemptId = await startAttempt(lessonId);
+      router.push({ pathname: '/lesson/[attemptId]', params: { attemptId } });
+    } catch (e) {
+      const error = toAppError(e);
+      if (error.kind === 'premium_required') router.push('/premium-module');
+      else if (error.kind === 'module_locked') notify('Módulo bloqueado', 'Conclua o módulo anterior');
+      else notify('Não foi possível abrir a aula', error.message);
+    } finally {
+      setOpening(null);
+    }
+  };
 
   return (
     <Screen state={state}>
@@ -68,9 +105,7 @@ export default function ModuleScreen() {
                   title={l.title}
                   position={l.position}
                   status={toLessonStatus(l.status)}
-                  onPress={() => {
-                    // TODO: navegar para a tela de aula quando a rota existir.
-                  }}
+                  onPress={() => void openLesson(l.lesson_id)}
                 />
               ))}
             </View>

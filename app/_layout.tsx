@@ -69,6 +69,8 @@ function RootNavigator() {
       <Stack.Protected guard={onboarded} redirectTo={home}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="course/[moduleId]" />
+        <Stack.Screen name="lesson/[attemptId]" />
+        <Stack.Screen name="lesson/result" options={{ gestureEnabled: false }} />
         <Stack.Screen name="library/[type]/[id]" />
         <Stack.Screen name="review/session" />
         <Stack.Screen name="profile/settings" />
