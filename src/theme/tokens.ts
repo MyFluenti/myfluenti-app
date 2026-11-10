@@ -17,6 +17,8 @@ export const colors = {
   textPrimary: '#F4F4F7',
   textSecondary: '#A6A7B2',
   textOnPrimary: '#101116',
+  /** Véu atrás de folhas inferiores e diálogos (bgBase com transparência). */
+  scrim: 'rgba(16, 17, 22, 0.72)',
 } as const;
 
 export const spacing = {
@@ -98,6 +100,8 @@ export const layout = {
   levelBadgeSize: 112,
   avatarTile: 60,
   formItemMinWidth: 100,
+  sheetHandleWidth: 40,
+  sheetHandleHeight: 4,
 } as const;
 
 // Opacidade só para feedback de toque (pressed). Estado desabilitado usa cores, não opacidade.
