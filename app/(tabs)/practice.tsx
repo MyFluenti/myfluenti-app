@@ -6,6 +6,10 @@ import { Screen } from '@/features/common/Screen';
 import { useReviewQueue } from '@/features/review/useReviewQueue';
 import { colors, radius, spacing } from '@/theme/tokens';
 
+function itemsText(n: number): string {
+  return `${n} ${n === 1 ? 'item' : 'itens'}`;
+}
+
 export default function PracticeScreen() {
   const router = useRouter();
   const state = useReviewQueue();
@@ -14,28 +18,29 @@ export default function PracticeScreen() {
     <Screen state={state}>
       {(queue) => (
         <>
-          <Text variant="display" accessibilityRole="header">
-            Revisão
-          </Text>
+          <View style={styles.header}>
+            <Text variant="display" accessibilityRole="header">
+              Revisão
+            </Text>
+            <Text variant="bodyM" color="textSecondary">
+              Reforce o que você já estudou, no tempo certo.
+            </Text>
+          </View>
 
           {queue.due_count === 0 ? (
             <NoReviewState onGoToCourse={() => router.navigate('/course')} />
           ) : (
             <View style={styles.container}>
-              {/* Card principal com contagem de hoje */}
               <View style={styles.heroCard}>
                 <View style={styles.heroContent}>
-                  <Text variant="heading1">
-                    {queue.due_count === 1 ? '1 item para hoje' : `${queue.due_count} itens para hoje`}
+                  <Text variant="caption" color="brandPrimaryLight">
+                    PARA HOJE
                   </Text>
+                  <Text variant="display">{itemsText(queue.due_count)}</Text>
                 </View>
-                <Button
-                  label="Começar revisão"
-                  onPress={() => router.push('/review/session')}
-                />
+                <Button label="Começar revisão" onPress={() => router.push('/review/session')} />
               </View>
 
-              {/* Card de revisões futuras */}
               <View style={styles.card}>
                 <Text variant="heading3" style={styles.cardTitle}>
                   Próximas revisões
@@ -44,18 +49,13 @@ export default function PracticeScreen() {
                   <Text variant="bodyM" color="textSecondary">
                     Amanhã
                   </Text>
-                  <Text variant="heading3">
-                    {queue.upcoming.tomorrow} {queue.upcoming.tomorrow === 1 ? 'item' : 'itens'}
-                  </Text>
+                  <Text variant="label">{itemsText(queue.upcoming.tomorrow)}</Text>
                 </View>
-                <View style={styles.divider} />
                 <View style={styles.row}>
                   <Text variant="bodyM" color="textSecondary">
                     Próximos 7 dias
                   </Text>
-                  <Text variant="heading3">
-                    {queue.upcoming.next_7_days} {queue.upcoming.next_7_days === 1 ? 'item' : 'itens'}
-                  </Text>
+                  <Text variant="label">{itemsText(queue.upcoming.next_7_days)}</Text>
                 </View>
               </View>
 
@@ -67,6 +67,10 @@ export default function PracticeScreen() {
                     : 'itens de conteúdo Premium aguardando desbloqueio.'}
                 </Text>
               )}
+
+              <Text variant="caption" color="textSecondary" style={styles.footnote}>
+                A revisão não bloqueia nenhum módulo. Estude no seu ritmo.
+              </Text>
             </View>
           )}
         </>
@@ -76,12 +80,15 @@ export default function PracticeScreen() {
 }
 
 const styles = StyleSheet.create({
+  header: {
+    gap: spacing.xs,
+  },
   container: {
     gap: spacing.lg,
   },
   heroCard: {
-    backgroundColor: colors.bgSurface,
-    borderColor: colors.borderDefault,
+    backgroundColor: colors.brandPrimarySubtle,
+    borderColor: colors.brandPrimary,
     borderWidth: 1,
     borderRadius: radius.lg,
     padding: spacing.xl,
@@ -106,8 +113,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  divider: {
-    height: 1,
-    backgroundColor: colors.borderDefault,
+  footnote: {
+    textAlign: 'center',
   },
 });

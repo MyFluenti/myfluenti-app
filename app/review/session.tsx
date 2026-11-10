@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -328,72 +328,36 @@ export default function ReviewSessionScreen() {
             <Icon name="check" color="statusSuccess" size={layout.iconSize * 1.5} />
           </View>
           <Text variant="display" style={styles.centerText}>
-            Revisão concluída!
+            Revisão concluída
           </Text>
-          <Text variant="bodyL" color="textSecondary" style={styles.centerText}>
-            Você revisou todos os itens desta sessão.
+          <Text variant="bodyM" color="textSecondary" style={styles.centerText}>
+            {`Você revisou ${summary.reviewed_count} ${summary.reviewed_count === 1 ? 'item' : 'itens'} hoje. As próximas revisões já foram agendadas.`}
           </Text>
 
           <View style={styles.summaryCard}>
             <View style={styles.summaryRow}>
               <Text variant="bodyM" color="textSecondary">
-                Itens revisados
+                Acertos
               </Text>
-              <Text variant="heading2">{summary.reviewed_count}</Text>
+              <Text variant="label" color="statusSuccess">
+                {summary.correct}
+              </Text>
             </View>
-
-            {(summary.correct > 0 || summary.incorrect > 0) && (
-              <>
-                <View style={styles.divider} />
-                <View style={styles.summaryRow}>
-                  <Text variant="bodyM" color="statusSuccess">
-                    Acertos
-                  </Text>
-                  <Text variant="heading3" color="statusSuccess">
-                    {summary.correct}
-                  </Text>
-                </View>
-                <View style={styles.summaryRow}>
-                  <Text variant="bodyM" color="statusError">
-                    Erros
-                  </Text>
-                  <Text variant="heading3" color="statusError">
-                    {summary.incorrect}
-                  </Text>
-                </View>
-              </>
-            )}
-
-            <View style={styles.divider} />
-            <View style={styles.difficultyBreakdown}>
-              <View style={styles.difficultyItem}>
-                <Text variant="caption" color="textSecondary">
-                  Fácil
-                </Text>
-                <Text variant="heading3">{summary.easy}</Text>
-              </View>
-              <View style={styles.difficultyItem}>
-                <Text variant="caption" color="textSecondary">
-                  Bom
-                </Text>
-                <Text variant="heading3">{summary.good}</Text>
-              </View>
-              <View style={styles.difficultyItem}>
-                <Text variant="caption" color="textSecondary">
-                  Difícil
-                </Text>
-                <Text variant="heading3">{summary.hard}</Text>
-              </View>
+            {/* "Para rever em breve": os erros voltam à fila (o backend agenda). */}
+            <View style={styles.summaryRow}>
+              <Text variant="bodyM" color="textSecondary">
+                Para rever em breve
+              </Text>
+              <Text variant="label" color="statusWarning">
+                {summary.incorrect}
+              </Text>
             </View>
-          </View>
-
-          <View style={styles.summaryAction}>
-            <Button
-              label="Voltar para a Revisão"
-              onPress={() => router.replace('/practice')}
-            />
           </View>
         </ScrollView>
+        <View style={styles.footer}>
+          <Button label="Voltar ao início" onPress={() => router.replace('/')} />
+          <Button label="Ver o curso" variant="secondary" onPress={() => router.replace('/course')} />
+        </View>
       </SafeAreaView>
     );
   }
@@ -403,8 +367,8 @@ export default function ReviewSessionScreen() {
     return (
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <EmptyState
-          title="Nenhum item pendente"
-          message="Você não tem nenhum item para revisar no momento."
+          title="Nada para revisar hoje"
+          message="Quando você errar ou concluir aulas, os itens aparecem aqui no melhor momento para rever."
           actionLabel="Voltar"
           onAction={() => router.replace('/practice')}
         />
@@ -413,38 +377,83 @@ export default function ReviewSessionScreen() {
   }
 
   const currentItem = items[currentIndex];
-  const progressPercent = ((currentIndex) / items.length) * 100;
+  // "3 de 8": o item atual conta na barra.
+  const progressPercent = ((currentIndex + 1) / items.length) * 100;
+
+  const ratingButtons = (onRate: (r: ReviewRating) => void) => (
+    <View style={styles.ratingSection}>
+      <Text variant="label" color="textSecondary" style={styles.centerText}>
+        Como foi lembrar disso?
+      </Text>
+      <View style={styles.ratingRow}>
+        {(['hard', 'good', 'easy'] as const).map((r) => (
+          <View key={r} style={styles.ratingCol}>
+            <Button
+              label={r === 'hard' ? 'Difícil' : r === 'good' ? 'Bom' : 'Fácil'}
+              variant="secondary"
+              loading={recordingResult}
+              onPress={() => onRate(r)}
+            />
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+
+  // Rodapé fixo: a ação do passo atual (Responder, Continuar ou Difícil/Bom/Fácil).
+  let footer: ReactNode = null;
+  if (currentItem.item_type === 'question') {
+    if (answerResult === null && !needsRating) {
+      footer = (
+        <Button
+          label="Responder"
+          disabled={!canSubmit(currentItem.question)}
+          loading={submittingAnswer}
+          onPress={handleSubmitAnswer}
+        />
+      );
+    } else if (needsRating || answerResult?.is_correct) {
+      footer = ratingButtons(handleRateQuestionCorrect);
+    } else {
+      // Erro: só "Continuar", sem rating (o backend força a qualidade).
+      footer = (
+        <Button label="Continuar" loading={recordingResult} onPress={handleContinueQuestionIncorrect} />
+      );
+    }
+  } else {
+    footer = ratingButtons(handleRateContent);
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      {/* Barra superior de navegação e progresso */}
       <View style={styles.topBar}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Fechar revisão"
-          onPress={confirmExit}
-          style={({ pressed }) => [styles.closeButton, { opacity: pressed ? opacity.pressed : 1 }]}
-        >
-          <Icon name="close" color="textSecondary" size={layout.iconSize} />
-        </Pressable>
-
-        <View style={styles.progressContainer}>
-          <ProgressBar
-            value={progressPercent}
-            accessibilityLabel={`Progresso: item ${currentIndex + 1} de ${items.length}`}
-          />
+        <View style={styles.titleRow}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Fechar revisão"
+            onPress={confirmExit}
+            style={({ pressed }) => [styles.closeButton, { opacity: pressed ? opacity.pressed : 1 }]}
+          >
+            <Icon name="close" color="textSecondary" size={layout.iconSize} />
+          </Pressable>
+          <Text variant="heading3" style={styles.titleText} accessibilityRole="header">
+            Revisão
+          </Text>
+          <Text variant="label" color="textSecondary">
+            {currentIndex + 1} de {items.length}
+          </Text>
         </View>
-
-        <Text variant="label" color="textSecondary">
-          {currentIndex + 1}/{items.length}
-        </Text>
+        <ProgressBar
+          value={progressPercent}
+          accessibilityLabel={`Progresso: item ${currentIndex + 1} de ${items.length}`}
+        />
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
         {/* Caso 1: Questão */}
         {currentItem.item_type === 'question' && (
           <View style={styles.itemWrapper}>
-            <Text variant="heading2" style={styles.prompt}>
+            <Text variant="heading1" style={styles.prompt}>
               {currentItem.question.prompt}
             </Text>
 
@@ -507,112 +516,36 @@ export default function ReviewSessionScreen() {
               );
             })()}
 
-            {/* Ação antes da resposta: botão Responder */}
-            {!answerResult && !needsRating && (
-              <View style={styles.actionContainer}>
-                <Button
-                  label="Responder"
-                  disabled={!canSubmit(currentItem.question)}
-                  loading={submittingAnswer}
-                  onPress={handleSubmitAnswer}
-                />
-              </View>
-            )}
-
             {/* O backend pediu o botão de uma questão já respondida nesta sessão */}
             {!answerResult && needsRating && (
-              <View style={styles.ratingSection}>
-                <Text variant="bodyM" color="textSecondary">
-                  Você já respondeu esta questão nesta sessão.
-                </Text>
-                <Text variant="heading3">Como foi lembrar disso?</Text>
-                <View style={styles.ratingRow}>
-                  {(['hard', 'good', 'easy'] as const).map((r) => (
-                    <View key={r} style={styles.ratingCol}>
-                      <Button
-                        label={r === 'hard' ? 'Difícil' : r === 'good' ? 'Bom' : 'Fácil'}
-                        variant="secondary"
-                        loading={recordingResult}
-                        onPress={() => handleRateQuestionCorrect(r)}
-                      />
-                    </View>
-                  ))}
-                </View>
-              </View>
+              <Text variant="bodyM" color="textSecondary">
+                Você já respondeu esta questão nesta sessão.
+              </Text>
             )}
 
-            {/* Feedback e avaliação pós-resposta */}
+            {/* Explicação devolvida pela RPC. O gabarito nunca vem para o app. */}
             {answerResult && (
-              <View style={styles.feedbackSection}>
-                <View
-                  style={[
-                    styles.feedbackCard,
-                    answerResult.is_correct
-                      ? styles.feedbackSuccess
-                      : styles.feedbackError,
-                  ]}
+              <View
+                style={[
+                  styles.feedbackCard,
+                  answerResult.is_correct ? styles.feedbackSuccess : styles.feedbackError,
+                ]}
+              >
+                <Text
+                  variant="heading3"
+                  color={answerResult.is_correct ? 'statusSuccess' : 'statusError'}
                 >
-                  <View style={styles.feedbackHeader}>
-                    <Icon
-                      name={answerResult.is_correct ? 'check' : 'close'}
-                      color={answerResult.is_correct ? 'statusSuccess' : 'statusError'}
-                      size={layout.iconSize}
-                    />
-                    <Text
-                      variant="heading3"
-                      color={answerResult.is_correct ? 'statusSuccess' : 'statusError'}
-                    >
-                      {answerResult.is_correct ? 'Correto!' : 'Incorreto'}
-                    </Text>
-                  </View>
-                  {answerResult.explanation ? (
-                    <Text variant="bodyM" color="textPrimary">
-                      {answerResult.explanation}
-                    </Text>
-                  ) : null}
-                </View>
-
-                {/* Acerto: 3 botões (Difícil, Bom, Fácil) */}
-                {answerResult.is_correct || needsRating ? (
-                  <View style={styles.ratingSection}>
-                    <Text variant="heading3">Como foi lembrar disso?</Text>
-                    <View style={styles.ratingRow}>
-                      <View style={styles.ratingCol}>
-                        <Button
-                          label="Difícil"
-                          variant="secondary"
-                          loading={recordingResult}
-                          onPress={() => handleRateQuestionCorrect('hard')}
-                        />
-                      </View>
-                      <View style={styles.ratingCol}>
-                        <Button
-                          label="Bom"
-                          variant="secondary"
-                          loading={recordingResult}
-                          onPress={() => handleRateQuestionCorrect('good')}
-                        />
-                      </View>
-                      <View style={styles.ratingCol}>
-                        <Button
-                          label="Fácil"
-                          variant="secondary"
-                          loading={recordingResult}
-                          onPress={() => handleRateQuestionCorrect('easy')}
-                        />
-                      </View>
-                    </View>
-                  </View>
-                ) : (
-                  /* Erro: botão Continuar (sem p_rating) */
-                  <View style={styles.actionContainer}>
-                    <Button
-                      label="Continuar"
-                      loading={recordingResult}
-                      onPress={handleContinueQuestionIncorrect}
-                    />
-                  </View>
-                )}
+                  {answerResult.is_correct
+                    ? answerResult.explanation
+                      ? 'Certo! Veja por quê'
+                      : 'Certo!'
+                    : 'Incorreto'}
+                </Text>
+                {answerResult.explanation ? (
+                  <Text variant="bodyM" color="textPrimary">
+                    {answerResult.explanation}
+                  </Text>
+                ) : null}
               </View>
             )}
           </View>
@@ -651,36 +584,6 @@ export default function ReviewSessionScreen() {
                 </View>
               )}
             </View>
-
-            <View style={styles.ratingSection}>
-              <Text variant="heading3">Como foi lembrar disso?</Text>
-              <View style={styles.ratingRow}>
-                <View style={styles.ratingCol}>
-                  <Button
-                    label="Difícil"
-                    variant="secondary"
-                    loading={recordingResult}
-                    onPress={() => handleRateContent('hard')}
-                  />
-                </View>
-                <View style={styles.ratingCol}>
-                  <Button
-                    label="Bom"
-                    variant="secondary"
-                    loading={recordingResult}
-                    onPress={() => handleRateContent('good')}
-                  />
-                </View>
-                <View style={styles.ratingCol}>
-                  <Button
-                    label="Fácil"
-                    variant="secondary"
-                    loading={recordingResult}
-                    onPress={() => handleRateContent('easy')}
-                  />
-                </View>
-              </View>
-            </View>
           </View>
         )}
 
@@ -698,39 +601,11 @@ export default function ReviewSessionScreen() {
                 </Text>
               ) : null}
             </View>
-
-            <View style={styles.ratingSection}>
-              <Text variant="heading3">Como foi lembrar disso?</Text>
-              <View style={styles.ratingRow}>
-                <View style={styles.ratingCol}>
-                  <Button
-                    label="Difícil"
-                    variant="secondary"
-                    loading={recordingResult}
-                    onPress={() => handleRateContent('hard')}
-                  />
-                </View>
-                <View style={styles.ratingCol}>
-                  <Button
-                    label="Bom"
-                    variant="secondary"
-                    loading={recordingResult}
-                    onPress={() => handleRateContent('good')}
-                  />
-                </View>
-                <View style={styles.ratingCol}>
-                  <Button
-                    label="Fácil"
-                    variant="secondary"
-                    loading={recordingResult}
-                    onPress={() => handleRateContent('easy')}
-                  />
-                </View>
-              </View>
-            </View>
           </View>
         )}
       </ScrollView>
+
+      <View style={styles.footer}>{footer}</View>
     </SafeAreaView>
   );
 }
@@ -741,13 +616,22 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgBase,
   },
   topBar: {
+    paddingHorizontal: layout.screenPaddingX,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: layout.screenPaddingX,
-    paddingVertical: spacing.md,
+    gap: spacing.sm,
+  },
+  titleText: {
+    flex: 1,
+  },
+  footer: {
+    padding: layout.screenPaddingX,
     gap: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderDefault,
   },
   closeButton: {
     minWidth: layout.minTouchTarget,
