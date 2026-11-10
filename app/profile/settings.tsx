@@ -95,11 +95,12 @@ export default function SettingsScreen() {
         <View style={styles.actionsSection}>
           <Button label="Sair da conta" variant="secondary" onPress={leave} loading={leaving} />
 
-          {/* A exclusão de conta ainda não existe no backend: sem ação e sem promessa. */}
-          <Button label="Excluir minha conta e dados" variant="secondary" disabled />
-          <Text variant="caption" color="textSecondary">
-            Em breve.
-          </Text>
+          <Button
+            label="Excluir minha conta e dados"
+            variant="secondary"
+            onPress={() => router.push('/profile/delete-account')}
+            accessibilityHint="Abre uma tela de confirmação. A exclusão é definitiva."
+          />
         </View>
       </ScrollView>
     </SafeAreaView>

@@ -14,6 +14,8 @@ export const KNOWN_CODES = [
   'already_answered',
   'already_reviewed',
   'section_not_in_lesson',
+  'confirmation_required',
+  'account_not_found',
 ] as const;
 export type KnownCode = (typeof KNOWN_CODES)[number];
 
@@ -47,6 +49,8 @@ const KNOWN_MESSAGES: Record<KnownCode, string> = {
   already_answered: 'Você já respondeu essa questão.',
   already_reviewed: 'Você já avaliou esse item.',
   section_not_in_lesson: 'Essa seção não pertence à aula escolhida.',
+  confirmation_required: 'Digite EXCLUIR para confirmar a exclusão da conta.',
+  account_not_found: 'Esta conta já foi excluída.',
 };
 
 const MESSAGES: Record<Exclude<AppErrorKind, 'known'>, string> = {

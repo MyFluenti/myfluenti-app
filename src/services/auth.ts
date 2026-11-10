@@ -32,7 +32,10 @@ export async function signOut(): Promise<void> {
   if (error) throw toAppError(error);
 }
 
-/** Encerra só a sessão local (não chama o servidor): funciona sem rede. */
+/**
+ * Encerra só a sessão local (scope local). O supabase-js limpa a sessão do armazenamento
+ * e depois chama /logout?scope=local, ignorando falha dessa chamada: funciona sem rede.
+ */
 export async function signOutLocal(): Promise<void> {
   const { error } = await supabase.auth.signOut({ scope: 'local' });
   if (error) throw toAppError(error);

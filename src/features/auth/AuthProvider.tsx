@@ -2,7 +2,9 @@ import type { Session, User } from '@supabase/supabase-js';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 
+import { deleteMyAccount } from '@/services/account';
 import * as auth from '@/services/auth';
+import { isAppError } from '@/services/errors';
 import { updateProfile } from '@/services/profile';
 
 export type AuthStatus = 'loading' | 'signed_in' | 'signed_out';
@@ -17,6 +19,11 @@ type AuthContextValue = {
   signOut: () => Promise<void>;
   /** Só limpa a sessão local; para sessão inválida ou sem rede. */
   signOutLocal: () => Promise<void>;
+  /**
+   * Exclui a conta pela RPC e descarta a sessão local. `account_not_found` conta como
+   * sucesso (a conta já não existe). Outros erros sobem para a tela tentar de novo.
+   */
+  deleteAccount: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -78,9 +85,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await auth.signOutLocal();
   }, []);
 
+  const deleteAccount = useCallback(async () => {
+    try {
+      await deleteMyAccount();
+    } catch (e) {
+      if (!(isAppError(e) && e.code === 'account_not_found')) throw e;
+    }
+    // A conta e os refresh tokens já não existem no servidor: só limpa a sessão local
+    // (scope local, sem chamada global). O app não tem outros caches de dados do aluno.
+    try {
+      await auth.signOutLocal();
+    } catch {
+      // a conta já foi excluída: força o estado para voltar ao login mesmo assim
+      setSession(null);
+      setStatus('signed_out');
+    }
+  }, []);
+
   const value = useMemo<AuthContextValue>(
-    () => ({ session, user: session?.user ?? null, status, signIn, signUp, signOut, signOutLocal }),
-    [session, status, signIn, signUp, signOut, signOutLocal],
+    () => ({ session, user: session?.user ?? null, status, signIn, signUp, signOut, signOutLocal, deleteAccount }),
+    [session, status, signIn, signUp, signOut, signOutLocal, deleteAccount],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
