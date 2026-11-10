@@ -18,9 +18,9 @@ type Params = {
   lessonPosition: string;
   score: string;
   passed: string;
-  sectionsComplete: string;
-  allAnswered: string;
-  moduleCompleted: string;
+  sectionsComplete?: string;
+  allAnswered?: string;
+  moduleCompleted?: string;
 };
 
 /**
@@ -32,7 +32,7 @@ export default function LessonResultScreen() {
   const router = useRouter();
   const p = useLocalSearchParams<Params>();
   const passed = p.passed === '1';
-  const score = Number(p.score);
+  const score = p.score ? Number(p.score) : Number.NaN;
   const position = Number(p.lessonPosition);
 
   const extras = useAsync(
@@ -43,10 +43,12 @@ export default function LessonResultScreen() {
         passed ? Promise.resolve(null) : lesson.countAttempts(p.lessonId).catch(() => null),
       ]);
       const module = overview?.find((m) => m.module_id === p.moduleId) ?? null;
-      const next =
-        lessons
-          ?.filter((l) => l.position > position && l.status !== 'locked')
-          .sort((a, b) => a.position - b.position)[0] ?? null;
+      // Próxima aula ainda não concluída, seguindo a ordem do módulo (as aulas podem ser
+      // feitas em qualquer ordem; quem valida o início é start_lesson_attempt).
+      const pending = (lessons ?? [])
+        .filter((l) => l.status !== 'completed' && l.lesson_id !== p.lessonId)
+        .sort((a, b) => a.position - b.position);
+      const next = pending.find((l) => l.position > position) ?? pending[0] ?? null;
       return { module, next, attempts };
     }, [p.moduleId, p.lessonId, passed, position]),
   );
@@ -80,12 +82,12 @@ export default function LessonResultScreen() {
   const next = extras.data?.next ?? null;
 
   let message: string;
+  // `sectionsComplete`/`allAnswered` faltam quando o resultado veio da tentativa gravada.
   if (passed) {
     message = `Você atingiu os ${LESSON_PASS_PCT_FOR_DISPLAY}% necessários.`;
-    if (score < 100) message += ' Os itens que você errou entram na sua revisão.';
-  } else if (p.sectionsComplete !== '1') {
+  } else if (p.sectionsComplete === '0') {
     message = 'Faltou ver alguma seção obrigatória. Sua tentativa foi salva e você pode tentar de novo.';
-  } else if (p.allAnswered !== '1') {
+  } else if (p.allAnswered === '0') {
     message = 'Ficou alguma questão sem resposta. Sua tentativa foi salva e você pode tentar de novo.';
   } else {
     message = `Para concluir a aula é preciso ${LESSON_PASS_PCT_FOR_DISPLAY}% de aproveitamento. Sua tentativa foi salva e você pode tentar de novo.`;

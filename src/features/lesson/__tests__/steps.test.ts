@@ -101,6 +101,11 @@ describe('resumeIndex', () => {
     expect(resumeIndex(buildSteps(c), false)).toBe(3);
   });
 
+  it('starts from the beginning in a new attempt (sections viewed before, no answer yet)', () => {
+    const c = content({ sections: [section('s1', 1, true), section('s2', 2, true)] });
+    expect(resumeIndex(buildSteps(c), false)).toBe(0);
+  });
+
   it('returns the number of steps when nothing is left', () => {
     const c = content({
       sections: [section('s1', 1, true)],

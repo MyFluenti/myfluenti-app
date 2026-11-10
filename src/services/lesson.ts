@@ -5,7 +5,7 @@ import type {
   LessonFinishResult,
 } from '@/types/contract';
 
-import { unwrapCount } from './errors';
+import { unwrap, unwrapCount } from './errors';
 import { rpc, rpcVoid } from './rpc';
 import { supabase } from './supabase';
 
@@ -23,13 +23,33 @@ export function getContent(attemptId: string): Promise<LessonContent> {
   return rpc<LessonContent>('get_lesson_content', { p_attempt_id: attemptId });
 }
 
-/** Quantas tentativas o aluno já abriu nesta aula (todas as versões). Só para exibir. */
+/**
+ * Quantas tentativas encerradas o aluno tem nesta aula. Só para exibir: conta pelas
+ * versões que o aluno ainda lê (RLS de `lesson_versions`).
+ */
 export async function countAttempts(lessonId: string): Promise<number> {
   return unwrapCount(
     await supabase
       .from('user_lesson_attempts')
       .select('id, lesson_versions!inner(lesson_id)', { count: 'exact', head: true })
+      .eq('status', 'completed')
       .eq('lesson_versions.lesson_id', lessonId),
+  );
+}
+
+/**
+ * Resultado gravado de uma tentativa encerrada (a própria linha, RLS de dono). Serve
+ * para mostrar o resultado quando a resposta de `finish_lesson_attempt` se perdeu.
+ */
+export async function getAttemptResult(
+  attemptId: string,
+): Promise<{ status: string; score_pct: number | null; passed: boolean | null }> {
+  return unwrap(
+    await supabase
+      .from('user_lesson_attempts')
+      .select('status, score_pct, passed')
+      .eq('id', attemptId)
+      .single(),
   );
 }
 

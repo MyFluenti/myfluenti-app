@@ -2,15 +2,9 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useMemo, useRef, useState, type ComponentRef } from 'react';
 import { Pressable, StyleSheet, View, type TextInput } from 'react-native';
 
-import {
-  Button,
-  ContentBlocks,
-  Icon,
-  LoadingState,
-  ProgressBar,
-  Text,
-} from '@/components';
+import { Button, ContentBlocks, Icon, LoadingState, ProgressBar, Text } from '@/components';
 import { parseContent, type ContentExample } from '@/components/ContentBlocks';
+import { notify } from '@/features/common/dialogs';
 import { FlowScreen } from '@/features/common/FlowScreen';
 import { LoadError } from '@/features/lesson/LoadError';
 import { SectionNote } from '@/features/lesson/SectionNote';
@@ -21,6 +15,7 @@ import {
   sectionLabel,
   type LessonStep,
 } from '@/features/lesson/steps';
+import { useSectionNotes } from '@/features/lesson/useSectionNotes';
 import { AnswerFeedback } from '@/features/questions/AnswerFeedback';
 import { QuestionAnswerInput } from '@/features/questions/QuestionAnswerInput';
 import {
@@ -37,7 +32,7 @@ import {
   removePhraseFavorite,
 } from '@/services/favorites';
 import * as lesson from '@/services/lesson';
-import { listNotes, type Note } from '@/services/notes';
+import { listNotes } from '@/services/notes';
 import { colors, layout, opacity, radius, spacing } from '@/theme/tokens';
 import type { LessonAnswerResult, LessonContent } from '@/types/contract';
 
@@ -67,27 +62,34 @@ export default function LessonScreen() {
   const content = state.data;
   const lessonId = content?.lesson.id;
 
-  // Notas da aula e frases favoritas: extras da tela, não bloqueiam a aula.
+  // Notas da aula e frases favoritas: extras da tela, não bloqueiam a aula. Cada um
+  // falha sozinho, com aviso.
   const extras = useAsync(
     useCallback(async () => {
       if (!content) return null;
-      const [notes, favorites] = await Promise.all([
+      const [notes, favorites] = await Promise.allSettled([
         listNotes({ lessonId: content.lesson.id }),
         getFavoriteExampleIds(exampleIds(content)),
       ]);
-      return { notes, favorites };
+      return {
+        notes: notes.status === 'fulfilled' ? notes.value : null,
+        favorites: favorites.status === 'fulfilled' ? favorites.value : null,
+      };
       // Só recarrega ao trocar de aula, não a cada resposta.
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [lessonId]),
   );
-  const [noteEdits, setNoteEdits] = useState<Record<string, Note | null>>({});
+  const notes = useSectionNotes(lessonId, extras.data?.notes ?? null);
   const [favoriteEdits, setFavoriteEdits] = useState<Record<string, boolean>>({});
+  const favoritePending = useRef<Set<string>>(new Set());
 
   const readOnly = content?.attempt.status !== 'in_progress';
   const steps = useMemo(() => (content ? buildSteps(content) : []), [content]);
 
+  // O passo inicial é fixado na primeira carga; recargas depois não mudam o passo.
   const [index, setIndex] = useState<number | null>(null);
-  const current = index ?? resumeIndex(steps, readOnly);
+  if (index === null && content) setIndex(resumeIndex(steps, readOnly));
+  const current = index ?? 0;
   const step: LessonStep | null = steps[current] ?? null;
 
   // Respostas e seções desta visita (além das que já vieram do backend).
@@ -103,6 +105,7 @@ export default function LessonScreen() {
     setIndex(next);
     setDraft(EMPTY_DRAFT);
     setError(undefined);
+    setMissing(undefined);
   };
 
   const leave = () => {
@@ -110,6 +113,24 @@ export default function LessonScreen() {
     else if (content) {
       router.replace({ pathname: '/course/[moduleId]', params: { moduleId: content.lesson.module_id } });
     } else router.replace('/course');
+  };
+
+  /** Abre o resultado gravado de uma tentativa já encerrada. */
+  const showSavedResult = async () => {
+    if (!content) return;
+    const saved = await lesson.getAttemptResult(attemptId);
+    if (saved.status !== 'completed') return;
+    router.replace({
+      pathname: '/lesson/result',
+      params: {
+        attemptId,
+        lessonId: content.lesson.id,
+        moduleId: content.lesson.module_id,
+        lessonPosition: String(content.lesson.position),
+        score: String(saved.score_pct ?? ''),
+        passed: saved.passed ? '1' : '0',
+      },
+    });
   };
 
   const advanceFromSection = async () => {
@@ -143,10 +164,15 @@ export default function LessonScreen() {
       setAnswersNow((prev) => ({ ...prev, [question.id]: result }));
     } catch (e) {
       const appError = toAppError(e);
-      // Já respondida (toque duplo, outra aba) ou tentativa encerrada: o backend tem a
-      // verdade; recarrega mantendo o passo.
-      if (appError.code === '23505' || appError.code === '55000') state.refresh();
-      else setError(appError.message);
+      if (appError.code === '23505') {
+        // Já respondida (toque duplo, outra aba): a correção volta na recarga.
+        state.refresh();
+      } else if (appError.code === '55000') {
+        setError('Esta tentativa já foi encerrada.');
+        state.refresh();
+      } else {
+        setError(appError.message);
+      }
     } finally {
       setBusy(null);
     }
@@ -161,11 +187,9 @@ export default function LessonScreen() {
       const fresh = await lesson.getContent(attemptId);
       if (!readyToFinish(fresh.progress)) {
         const freshSteps = buildSteps(fresh);
-        setMissing(
-          'Ainda falta ver alguma seção ou responder alguma questão. Levamos você até lá.',
-        );
         state.refresh();
         goTo(Math.min(resumeIndex(freshSteps, false), freshSteps.length - 1));
+        setMissing('Ainda falta ver alguma seção ou responder alguma questão. Levamos você até lá.');
         return;
       }
       const result = await lesson.finishAttempt(attemptId);
@@ -185,30 +209,38 @@ export default function LessonScreen() {
       });
     } catch (e) {
       const appError = toAppError(e);
-      if (appError.code === '55000') state.refresh();
-      else setError(appError.message);
+      if (appError.code === '55000') {
+        // Já encerrada (ex.: a resposta anterior se perdeu na rede): mostra o resultado gravado.
+        await showSavedResult().catch(() => setError('Esta tentativa já foi encerrada.'));
+      } else if (appError.kind === 'premium_required') {
+        router.push('/premium-module');
+      } else {
+        setError(appError.message);
+      }
     } finally {
       setBusy(null);
     }
   };
 
-  const toggleFavorite = async (id: string, isFavorite: boolean) => {
-    const next = !isFavorite;
-    setFavoriteEdits((prev) => ({ ...prev, [id]: next }));
-    try {
-      if (next) await addPhraseFavorite(id);
-      else await removePhraseFavorite(id);
-    } catch {
-      setFavoriteEdits((prev) => ({ ...prev, [id]: isFavorite }));
-    }
-  };
-
   const isFavorite = (id: string) =>
-    favoriteEdits[id] ?? extras.data?.favorites.has(id) ?? false;
+    favoriteEdits[id] ?? extras.data?.favorites?.has(id) ?? false;
 
-  const noteFor = (sectionId: string): Note | null => {
-    if (sectionId in noteEdits) return noteEdits[sectionId];
-    return extras.data?.notes.find((n) => n.lesson_section_id === sectionId) ?? null;
+  const toggleFavorite = async (id: string) => {
+    if (favoritePending.current.has(id)) return;
+    favoritePending.current.add(id);
+    const was = isFavorite(id);
+    setFavoriteEdits((prev) => ({ ...prev, [id]: !was }));
+    try {
+      if (!was) await addPhraseFavorite(id);
+      else await removePhraseFavorite(id);
+    } catch (e) {
+      // Já favoritada (ex.: em outro aparelho): o estado final é o que o aluno pediu.
+      if (!was && toAppError(e).code === '23505') return;
+      setFavoriteEdits((prev) => ({ ...prev, [id]: was }));
+      notify('Não foi possível salvar o favorito', toAppError(e).message);
+    } finally {
+      favoritePending.current.delete(id);
+    }
   };
 
   // ---------- cabeçalho ----------
@@ -226,8 +258,10 @@ export default function LessonScreen() {
       <View style={styles.topRow}>
         <Pressable
           onPress={leave}
+          disabled={busy === 'finish'}
           accessibilityRole="button"
           accessibilityLabel="Voltar ao módulo"
+          accessibilityState={{ disabled: busy === 'finish' }}
           hitSlop={spacing.sm}
           style={({ pressed }) => [styles.back, { opacity: pressed ? opacity.pressed : 1 }]}
         >
@@ -235,7 +269,7 @@ export default function LessonScreen() {
             ‹ Módulo
           </Text>
         </Pressable>
-        {step?.kind === 'section' && extras.data ? (
+        {step?.kind === 'section' && extras.data?.notes ? (
           <Pressable
             onPress={() => noteInput.current?.focus()}
             accessibilityRole="button"
@@ -278,16 +312,27 @@ export default function LessonScreen() {
   if (state.error || !content) {
     return (
       <FlowScreen header={header}>
-        {state.error ? <LoadError error={state.error} onRetry={state.reload} /> : null}
+        {state.error ? (
+          <LoadError error={state.error} onRetry={state.reload} onBack={leave} />
+        ) : null}
       </FlowScreen>
     );
   }
 
-  const errorText = error ? (
-    <Text variant="bodyM" color="statusError" accessibilityLiveRegion="polite">
-      {error}
-    </Text>
-  ) : null;
+  const messages = (
+    <>
+      {missing ? (
+        <Text variant="bodyM" color="statusWarning" accessibilityLiveRegion="polite">
+          {missing}
+        </Text>
+      ) : null}
+      {error ? (
+        <Text variant="bodyM" color="statusError" accessibilityLiveRegion="polite">
+          {error}
+        </Text>
+      ) : null}
+    </>
+  );
 
   // ---------- fim ----------
   if (!step) {
@@ -297,9 +342,12 @@ export default function LessonScreen() {
         centered
         footer={
           <>
-            {errorText}
+            {messages}
             {readOnly ? (
-              <Button label="Voltar ao módulo" onPress={leave} />
+              <>
+                <Button label="Ver resultado" onPress={() => void showSavedResult()} />
+                <Button label="Voltar ao módulo" variant="secondary" onPress={leave} />
+              </>
             ) : (
               <Button label="Ver resultado" onPress={finish} loading={busy === 'finish'} />
             )}
@@ -331,6 +379,13 @@ export default function LessonScreen() {
       />
     ) : null;
 
+  const notesUnavailable =
+    extras.data && (extras.data.notes === null || extras.data.favorites === null) ? (
+      <Text variant="caption" color="textSecondary">
+        Não conseguimos carregar suas notas ou favoritos agora.
+      </Text>
+    ) : null;
+
   // ---------- seção ----------
   if (step.kind === 'section') {
     const { section } = step;
@@ -338,18 +393,14 @@ export default function LessonScreen() {
     const label = sectionLabel(section.section_type);
     const primaryLabel =
       next?.kind === 'question' && step.number === step.total ? 'Fazer exercícios' : 'Continuar';
+    const sectionNote = notes.noteFor(section.id);
 
     return (
       <FlowScreen
         header={header}
         footer={
           <>
-            {missing ? (
-              <Text variant="bodyM" color="statusWarning" accessibilityLiveRegion="polite">
-                {missing}
-              </Text>
-            ) : null}
-            {errorText}
+            {messages}
             <View style={styles.footerRow}>
               {backButton}
               <Button
@@ -380,14 +431,14 @@ export default function LessonScreen() {
             content={section.content}
             renderItemAccessory={(item: ContentExample) => {
               const id = item.vocabulary_example_id;
-              if (!id || !extras.data) return null;
+              if (!id || !extras.data?.favorites) return null;
               const fav = isFavorite(id);
               return (
                 <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={fav ? 'Desfavoritar frase' : 'Favoritar frase'}
-                  accessibilityState={{ selected: fav }}
-                  onPress={() => void toggleFavorite(id, fav)}
+                  accessibilityRole="checkbox"
+                  accessibilityLabel={`Favoritar frase: ${item.en}`}
+                  aria-checked={fav}
+                  onPress={() => void toggleFavorite(id)}
                   hitSlop={spacing.sm}
                   style={styles.iconButton}
                 >
@@ -398,16 +449,16 @@ export default function LessonScreen() {
               );
             }}
           />
-          {extras.data ? (
+          {extras.data?.notes ? (
             <SectionNote
               key={section.id}
-              lessonId={content.lesson.id}
-              sectionId={section.id}
-              note={noteFor(section.id)}
-              onChange={(note) => setNoteEdits((prev) => ({ ...prev, [section.id]: note }))}
+              initialText={sectionNote?.body ?? ''}
+              saveState={notes.stateFor(section.id)}
+              onSave={(text) => void notes.save(section.id, text)}
               inputRef={noteInput}
             />
           ) : null}
+          {notesUnavailable}
         </View>
       </FlowScreen>
     );
@@ -425,22 +476,25 @@ export default function LessonScreen() {
       header={header}
       footer={
         <>
-          {missing ? (
-            <Text variant="bodyM" color="statusWarning" accessibilityLiveRegion="polite">
-              {missing}
-            </Text>
-          ) : null}
-          {errorText}
-          {answered || readOnly ? (
-            <Button label={isLast ? 'Continuar' : 'Próxima'} onPress={() => goTo(current + 1)} />
-          ) : (
-            <Button
-              label="Responder"
-              onPress={submit}
-              loading={busy === 'answer'}
-              disabled={!canSubmitDraft(question, draft) || busy !== null}
-            />
-          )}
+          {messages}
+          <View style={styles.footerRow}>
+            {backButton}
+            {answered || readOnly ? (
+              <Button
+                label={isLast ? 'Continuar' : 'Próxima'}
+                onPress={() => goTo(current + 1)}
+                style={styles.primaryButton}
+              />
+            ) : (
+              <Button
+                label="Responder"
+                onPress={submit}
+                loading={busy === 'answer'}
+                disabled={!canSubmitDraft(question, draft) || busy !== null}
+                style={styles.primaryButton}
+              />
+            )}
+          </View>
         </>
       }
     >
@@ -450,7 +504,9 @@ export default function LessonScreen() {
             {exercise.instructions}
           </Text>
         ) : null}
-        <Text variant="heading2">{question.prompt}</Text>
+        <Text variant="heading2" accessibilityRole="header">
+          {question.prompt}
+        </Text>
         <QuestionAnswerInput
           question={question}
           draft={draft}

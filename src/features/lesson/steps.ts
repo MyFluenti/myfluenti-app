@@ -58,14 +58,21 @@ export function buildSteps(content: LessonContent): LessonStep[] {
 /**
  * Onde retomar: a primeira seção ainda não vista ou a primeira questão sem resposta
  * nesta tentativa. `steps.length` quando não falta nada (hora de encerrar).
- * Tentativa encerrada abre do começo, só para leitura.
+ * Tentativa encerrada abre do começo, só para leitura. Seção vista vale por aluno, não
+ * por tentativa: numa tentativa nova (nenhuma resposta ainda) a aula abre do começo,
+ * para o aluno reler a explicação antes de refazer os exercícios.
  */
 export function resumeIndex(steps: LessonStep[], readOnly: boolean): number {
   if (readOnly) return 0;
-  const index = steps.findIndex((step) =>
-    step.kind === 'section' ? !step.section.viewed : step.question.answer === null,
+  const unviewed = steps.findIndex((step) => step.kind === 'section' && !step.section.viewed);
+  if (unviewed !== -1) return unviewed;
+  const questions = steps.filter((step) => step.kind === 'question');
+  const anyAnswered = questions.some((step) => step.question.answer !== null);
+  if (!anyAnswered && questions.length > 0) return 0;
+  const unanswered = steps.findIndex(
+    (step) => step.kind === 'question' && step.question.answer === null,
   );
-  return index === -1 ? steps.length : index;
+  return unanswered === -1 ? steps.length : unanswered;
 }
 
 /**

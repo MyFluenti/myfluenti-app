@@ -1,60 +1,60 @@
-import { useRef, useState, type ComponentRef, type Ref } from 'react';
+import { useEffect, useRef, useState, type ComponentRef, type Ref } from 'react';
 import type { TextInput } from 'react-native';
 import { StyleSheet, View } from 'react-native';
 
 import { Input, Text } from '@/components';
-import { toAppError } from '@/services/errors';
-import { createNote, deleteNote, updateNote, type Note } from '@/services/notes';
 import { spacing } from '@/theme/tokens';
 
-/** Mesmo limite que o backend vai validar em `user_notes.body` (2000 caracteres). */
+import type { NoteSaveState } from './useSectionNotes';
+
+/** Mesmo limite que o backend valida em `user_notes.body` (2000 caracteres). */
 export const NOTE_MAX_LENGTH = 2000;
 
-type SaveState = 'idle' | 'saving' | 'saved' | 'error';
+/** Espera depois da última tecla antes de salvar. */
+const SAVE_DELAY_MS = 800;
 
 export type SectionNoteProps = {
-  lessonId: string;
-  sectionId: string;
-  note: Note | null;
-  onChange: (note: Note | null) => void;
+  /** Texto salvo quando o campo montou (a tela monta um campo por seção, com key). */
+  initialText: string;
+  saveState: NoteSaveState;
+  /** Grava o texto (a fila fica na tela, não aqui). */
+  onSave: (text: string) => void;
   inputRef?: Ref<ComponentRef<typeof TextInput>>;
 };
 
 /**
- * Nota do aluno sobre uma seção da aula (`user_notes` com `lesson_id` e
- * `lesson_section_id`). Salva ao sair do campo: cria, atualiza ou, se ficar vazia, apaga.
+ * Campo "Sua nota" de uma seção. Salva pouco depois de o aluno parar de digitar, ao sair
+ * do campo e ao desmontar (trocar de seção ou sair da aula), para não perder texto.
  */
-export function SectionNote({ lessonId, sectionId, note, onChange, inputRef }: SectionNoteProps) {
-  const [text, setText] = useState(note?.body ?? '');
-  const [state, setState] = useState<SaveState>('idle');
-  const [error, setError] = useState<string | undefined>();
-  // O texto inicial vem da nota salva; a tela monta um SectionNote por seção (key).
-  const saving = useRef(false);
+export function SectionNote({ initialText, saveState, onSave, inputRef }: SectionNoteProps) {
+  const [text, setText] = useState(initialText);
+  const latestText = useRef(initialText);
+  const latestSave = useRef(onSave);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const save = async () => {
-    if (saving.current) return;
-    const body = text.trim();
-    if (body === (note?.body ?? '').trim()) return;
-    saving.current = true;
-    setState('saving');
-    setError(undefined);
-    try {
-      if (!body) {
-        if (note) await deleteNote(note.id);
-        onChange(null);
-      } else if (note) {
-        onChange(await updateNote(note.id, { body }));
-      } else {
-        onChange(await createNote({ lessonId, lessonSectionId: sectionId }, body));
-      }
-      setState('saved');
-    } catch (e) {
-      setState('error');
-      setError(toAppError(e).message);
-    } finally {
-      saving.current = false;
+  useEffect(() => {
+    latestSave.current = onSave;
+  }, [onSave]);
+
+  const flush = () => {
+    if (timer.current) {
+      clearTimeout(timer.current);
+      timer.current = null;
     }
+    latestSave.current(latestText.current);
   };
+
+  // Ao desmontar, grava o que ficou no campo (a fila ignora se nada mudou).
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+      latestSave.current(latestText.current);
+    },
+    [],
+  );
+
+  const status =
+    saveState.status === 'saving' ? 'Salvando…' : saveState.status === 'saved' ? 'Nota salva' : null;
 
   return (
     <View style={styles.root}>
@@ -65,16 +65,18 @@ export function SectionNote({ lessonId, sectionId, note, onChange, inputRef }: S
         value={text}
         onChangeText={(value) => {
           setText(value);
-          if (state !== 'idle') setState('idle');
+          latestText.current = value;
+          if (timer.current) clearTimeout(timer.current);
+          timer.current = setTimeout(flush, SAVE_DELAY_MS);
         }}
-        onBlur={() => void save()}
+        onBlur={flush}
         multiline
         maxLength={NOTE_MAX_LENGTH}
-        error={error}
+        error={saveState.status === 'error' ? saveState.error : undefined}
       />
-      {state === 'saving' || state === 'saved' ? (
+      {status ? (
         <Text variant="caption" color="textSecondary" accessibilityLiveRegion="polite">
-          {state === 'saving' ? 'Salvando…' : 'Nota salva'}
+          {status}
         </Text>
       ) : null}
     </View>
