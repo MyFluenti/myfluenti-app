@@ -12,12 +12,11 @@ type ProfileUpdate = Database['public']['Tables']['profiles']['Update'];
 /** Só os campos liberados pelo grant de colunas do aluno. */
 export type ProfilePatch = Pick<
   ProfileUpdate,
-  'display_name' | 'avatar_url' | 'locale' | 'self_assessed_level_id' | 'onboarding_completed_at'
+  'display_name' | 'locale' | 'self_assessed_level_id' | 'onboarding_completed_at'
 >;
 
 const ALLOWED: (keyof ProfilePatch)[] = [
   'display_name',
-  'avatar_url',
   'locale',
   'self_assessed_level_id',
   'onboarding_completed_at',
