@@ -16,7 +16,9 @@ export type IconName =
   | 'chevron-right'
   | 'settings'
   | 'pencil'
-  | 'dice';
+  | 'dice'
+  | 'more'
+  | 'alert';
 
 export type IconProps = {
   name: IconName;
@@ -76,6 +78,8 @@ export function Icon({ name, color = 'textPrimary', size = layout.iconSize }: Ic
       )}
       {name === 'check' && <Path d="m5 12.5 4.5 4.5L19 7.5" />}
       {name === 'close' && <Path d="M6 6l12 12M18 6 6 18" />}
+      {name === 'more' && <Path d="M5 12h.01M12 12h.01M19 12h.01" />}
+      {name === 'alert' && <Path d="M12 7v6M12 17h.01" />}
       {name === 'lock' && (
         <>
           <Rect x={5} y={11} width={14} height={10} rx={2} />

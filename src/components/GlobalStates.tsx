@@ -10,11 +10,12 @@ import {
 import { colors, layout, radius, spacing } from '@/theme/tokens';
 
 import { Button } from './Button';
+import { Icon } from './icons';
 import { Text } from './Text';
 
 // ---------- Esqueleto ----------
 
-function SkeletonBlock({ height }: { height: number }) {
+function SkeletonBlock({ height, width, round = radius.lg }: { height: number; width?: `${number}%`; round?: number }) {
   const [pulse] = useState(() => new Animated.Value(1));
   const [reduceMotion, setReduceMotion] = useState(false);
 
@@ -41,7 +42,7 @@ function SkeletonBlock({ height }: { height: number }) {
     return () => loop.stop();
   }, [pulse, reduceMotion]);
 
-  return <Animated.View style={[styles.skeleton, { height, opacity: pulse }]} />;
+  return <Animated.View style={[styles.skeleton, { height, width, borderRadius: round, opacity: pulse }]} />;
 }
 
 // ---------- LoadingState ----------
@@ -64,10 +65,14 @@ export function LoadingState({ variant = 'skeleton', message = 'Carregando' }: L
         </View>
       ) : (
         <View style={styles.skeletonList}>
-          <SkeletonBlock height={spacing['2xl']} />
-          <SkeletonBlock height={layout.lessonRowMinHeight + spacing['3xl']} />
-          <SkeletonBlock height={layout.lessonRowMinHeight + spacing['3xl']} />
-          <SkeletonBlock height={layout.lessonRowMinHeight + spacing['3xl']} />
+          <View style={styles.skeletonHeader}>
+            <SkeletonBlock height={spacing['2xl'] + spacing.xs} width="55%" round={radius.md} />
+            <SkeletonBlock height={spacing.lg} width="75%" round={radius.sm} />
+          </View>
+          <SkeletonBlock height={layout.skeletonHeroHeight} />
+          <SkeletonBlock height={layout.skeletonCardHeight} />
+          <SkeletonBlock height={layout.skeletonCardHeight} />
+          <SkeletonBlock height={layout.skeletonCardHeight} />
         </View>
       )}
     </View>
@@ -81,11 +86,23 @@ export type EmptyStateProps = {
   message?: string;
   actionLabel?: string;
   onAction?: () => void;
+  /** Ícone decorativo no topo: check (violeta) ou alert (atenção). Sem ícone por padrão. */
+  icon?: 'check' | 'alert';
 };
 
-export function EmptyState({ title, message, actionLabel, onAction }: EmptyStateProps) {
+export function EmptyState({ title, message, actionLabel, onAction, icon }: EmptyStateProps) {
   return (
     <View style={styles.center}>
+      {icon === 'check' ? (
+        <View style={[styles.iconCircle, { backgroundColor: colors.brandPrimarySubtle, borderColor: colors.brandPrimary }]}>
+          <Icon name="check" color="brandPrimaryLight" size={spacing['3xl']} />
+        </View>
+      ) : null}
+      {icon === 'alert' ? (
+        <View style={[styles.iconCircle, { backgroundColor: colors.bgElevated, borderColor: colors.statusWarning }]}>
+          <Icon name="alert" color="statusWarning" size={spacing['3xl']} />
+        </View>
+      ) : null}
       <Text variant="heading2" style={styles.centerText} accessibilityRole="header">
         {title}
       </Text>
@@ -113,10 +130,10 @@ export type ErrorStateProps = {
 
 export function ErrorState({
   title = 'Sem conexão',
-  message = 'Não foi possível carregar agora. Confira sua internet e tente de novo.',
+  message = 'Não conseguimos carregar agora. Seu progresso está salvo. Confira a internet e tente de novo.',
   onRetry,
 }: ErrorStateProps) {
-  return <EmptyState title={title} message={message} actionLabel="Tentar de novo" onAction={onRetry} />;
+  return <EmptyState title={title} message={message} actionLabel="Tentar de novo" onAction={onRetry} icon="alert" />;
 }
 
 // ---------- NoReviewState ----------
@@ -127,9 +144,10 @@ export function NoReviewState({ onGoToCourse }: NoReviewStateProps) {
   return (
     <EmptyState
       title="Nada para revisar hoje"
-      message="Quando você errar ou estudar novas aulas, os itens de revisão aparecem aqui."
+      message="Quando você errar ou concluir aulas, os itens aparecem aqui no melhor momento para rever."
       actionLabel="Ir para o curso"
       onAction={onGoToCourse}
+      icon="check"
     />
   );
 }
@@ -174,6 +192,16 @@ const styles = StyleSheet.create({
   },
   centerText: { textAlign: 'center' },
   action: { alignSelf: 'stretch', marginTop: spacing.sm },
-  skeletonList: { gap: spacing.lg },
+  skeletonList: { gap: spacing.md },
+  skeletonHeader: { gap: spacing.sm, marginBottom: spacing.md },
+  iconCircle: {
+    width: layout.stateIconSize,
+    height: layout.stateIconSize,
+    borderRadius: radius.full,
+    borderWidth: layout.borderWidthStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
+  },
   skeleton: { borderRadius: radius.lg, backgroundColor: colors.bgElevated },
 });

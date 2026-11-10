@@ -17,30 +17,37 @@ export type AnswerOptionProps = {
 
 const stateConfig: Record<
   AnswerOptionState,
-  { bg: string; border: string; indicator: ColorToken; suffix: string }
+  { bg: string; border: string; dot: string | null; mark: ColorToken | null; suffix: string }
 > = {
-  normal: { bg: colors.bgSurface, border: colors.borderDefault, indicator: 'textSecondary', suffix: '' },
+  normal: {
+    bg: colors.bgSurface,
+    border: colors.borderDefault,
+    dot: null,
+    mark: null,
+    suffix: '',
+  },
   selected: {
     bg: colors.brandPrimarySubtle,
     border: colors.brandPrimary,
-    indicator: 'brandPrimary',
-    suffix: ', selecionada',
+    dot: colors.brandPrimary,
+    mark: null,
+    suffix: 'selecionada',
   },
   correct: {
     bg: colors.statusSuccessSubtle,
     border: colors.statusSuccess,
-    indicator: 'statusSuccess',
-    suffix: ', correta',
+    dot: colors.statusSuccess,
+    mark: 'statusSuccess',
+    suffix: 'correta',
   },
   incorrect: {
     bg: colors.statusErrorSubtle,
     border: colors.statusError,
-    indicator: 'statusError',
-    suffix: ', incorreta',
+    dot: colors.statusError,
+    mark: 'statusError',
+    suffix: 'incorreta',
   },
 };
-
-const INDICATOR_SIZE = spacing.xl + spacing.xs; // 24
 
 export function AnswerOption({ label, state = 'normal', onPress, disabled = false }: AnswerOptionProps) {
   const c = stateConfig[state];
@@ -48,25 +55,31 @@ export function AnswerOption({ label, state = 'normal', onPress, disabled = fals
   return (
     <Pressable
       accessibilityRole="radio"
-      accessibilityLabel={`${label}${c.suffix}`}
+      accessibilityLabel={c.suffix ? `${label}, ${c.suffix}` : label}
       accessibilityState={{ selected: state !== 'normal', checked: state !== 'normal', disabled }}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
         styles.base,
-        { backgroundColor: c.bg, borderColor: c.border, opacity: pressed ? opacity.pressed : 1 },
+        {
+          backgroundColor: c.bg,
+          borderColor: c.border,
+          borderWidth: state === 'normal' ? layout.borderWidth : layout.borderWidthStrong,
+          opacity: pressed ? opacity.pressed : 1,
+        },
       ]}
     >
-      <View style={[styles.indicator, { borderColor: colors[c.indicator] }]}>
-        {state === 'selected' && (
-          <View style={[styles.dot, { backgroundColor: colors.brandPrimary }]} />
-        )}
-        {state === 'correct' && <Icon name="check" color="statusSuccess" size={spacing.lg} />}
-        {state === 'incorrect' && <Icon name="close" color="statusError" size={spacing.lg} />}
-      </View>
+      <View
+        style={[
+          styles.indicator,
+          c.dot ? { backgroundColor: c.dot, borderColor: c.dot } : { borderColor: colors.borderDefault },
+        ]}
+      />
       <Text variant="bodyL" style={styles.label}>
         {label}
       </Text>
+      {/* A marca ✓/✕ garante que acerto e erro não dependam só de cor. */}
+      {c.mark ? <Icon name={state === 'correct' ? 'check' : 'close'} color={c.mark} size={spacing.lg} /> : null}
     </Pressable>
   );
 }
@@ -75,7 +88,6 @@ const styles = StyleSheet.create({
   base: {
     minHeight: layout.inputHeight,
     borderRadius: radius.md,
-    borderWidth: layout.borderWidth,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     flexDirection: 'row',
@@ -83,17 +95,10 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   indicator: {
-    width: INDICATOR_SIZE,
-    height: INDICATOR_SIZE,
+    width: spacing.xl,
+    height: spacing.xl,
     borderRadius: radius.full,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dot: {
-    width: spacing.md,
-    height: spacing.md,
-    borderRadius: radius.full,
+    borderWidth: layout.borderWidthStrong,
   },
   label: { flex: 1 },
 });

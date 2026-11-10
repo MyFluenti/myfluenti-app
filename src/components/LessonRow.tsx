@@ -14,37 +14,40 @@ export type LessonRowProps = {
   position: number;
   status: LessonStatus;
   onPress?: () => void;
-  /** Texto exibido quando bloqueada. Padrão: "Conclua o módulo anterior". */
+  /** Texto exibido quando bloqueada. Padrão: "Bloqueada". */
   lockedText?: string;
 };
 
 const CIRCLE = spacing['2xl'] + spacing.md; // 36
 
 const statusText: Record<Exclude<LessonStatus, 'locked'>, string> = {
-  available: 'Disponível',
+  available: 'Aula disponível',
   in_progress: 'Em andamento',
   completed: 'Concluída',
 };
 
-export function LessonRow({
-  title,
-  position,
-  status,
-  onPress,
-  lockedText = 'Conclua o módulo anterior',
-}: LessonRowProps) {
+export function LessonRow({ title, position, status, onPress, lockedText = 'Bloqueada' }: LessonRowProps) {
   const locked = status === 'locked';
   const subtitle = locked ? lockedText : statusText[status];
 
-  const circleBg =
+  const rowBg =
     status === 'completed'
       ? colors.statusSuccessSubtle
       : status === 'in_progress'
         ? colors.brandPrimarySubtle
-        : colors.bgElevated;
+        : colors.bgSurface;
+  const borderColor =
+    status === 'completed'
+      ? colors.statusSuccess
+      : status === 'in_progress'
+        ? colors.brandPrimary
+        : colors.borderDefault;
   const subtitleColor: ColorToken =
-    status === 'completed' ? 'statusSuccess' : status === 'in_progress' ? 'brandPrimaryLight' : 'textSecondary';
-  const borderColor = status === 'in_progress' ? colors.brandPrimary : colors.borderDefault;
+    status === 'completed'
+      ? 'statusSuccess'
+      : locked
+        ? 'textSecondary'
+        : 'brandPrimaryLight';
 
   return (
     <Pressable
@@ -55,28 +58,31 @@ export function LessonRow({
       onPress={onPress}
       style={({ pressed }) => [
         styles.base,
-        { borderColor, opacity: pressed ? opacity.pressed : 1 },
+        { backgroundColor: rowBg, borderColor, opacity: pressed ? opacity.pressed : 1 },
       ]}
     >
-      <View style={[styles.circle, { backgroundColor: circleBg }]}>
-        {status === 'completed' ? (
-          <Icon name="check" color="statusSuccess" size={spacing.xl} />
-        ) : locked ? (
-          <Icon name="lock" color="textSecondary" size={spacing.xl} />
-        ) : (
-          <Text variant="label" color={status === 'in_progress' ? 'brandPrimaryLight' : 'textPrimary'}>
-            {String(position)}
-          </Text>
-        )}
+      <View style={styles.circle}>
+        <Text variant="label" color={locked ? 'textSecondary' : 'textPrimary'}>
+          {String(position)}
+        </Text>
       </View>
       <View style={styles.texts}>
-        <Text variant="heading3" color={locked ? 'textSecondary' : 'textPrimary'} numberOfLines={2}>
+        <Text variant="bodyL" color={locked ? 'textSecondary' : 'textPrimary'} numberOfLines={2}>
           {title}
         </Text>
         <Text variant="caption" color={subtitleColor}>
           {subtitle}
         </Text>
       </View>
+      {status === 'completed' ? (
+        <Icon name="check" color="statusSuccess" size={spacing.lg} />
+      ) : status === 'in_progress' ? (
+        <Icon name="more" color="brandPrimaryLight" size={spacing.lg} />
+      ) : locked ? (
+        <Icon name="lock" color="textSecondary" size={spacing.lg} />
+      ) : (
+        <Icon name="chevron-right" color="brandPrimaryLight" size={spacing.lg} />
+      )}
     </Pressable>
   );
 }
@@ -86,7 +92,6 @@ const styles = StyleSheet.create({
     minHeight: layout.lessonRowMinHeight,
     borderRadius: radius.lg,
     borderWidth: layout.borderWidth,
-    backgroundColor: colors.bgSurface,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     flexDirection: 'row',
@@ -97,6 +102,7 @@ const styles = StyleSheet.create({
     width: CIRCLE,
     height: CIRCLE,
     borderRadius: radius.full,
+    backgroundColor: colors.bgElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
