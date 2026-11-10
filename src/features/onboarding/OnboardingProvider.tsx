@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 
 import { useAuth } from '@/features/auth/AuthProvider';
@@ -23,8 +23,9 @@ type OnboardingContextValue = {
   /** Guarda a autoavaliação (update permitido em profiles). */
   saveSelfAssessment: (levelId: string | null) => Promise<void>;
   /**
-   * Define o nível de partida pela RPC (o backend recusa nível acima do recomendado)
-   * e grava `onboarding_completed_at`. Só depois disso o app libera as abas.
+   * Define o nível de partida pela RPC. O backend recusa nível acima do recomendado e,
+   * na mesma transação, grava `onboarding_completed_at` (migration 010). Só depois disso
+   * o app libera as abas.
    */
   complete: (levelId: string, placementAttemptId?: string) => Promise<void>;
 };
@@ -41,13 +42,9 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<AppError | null>(null);
   const [selfAssessedLevelId, setSelfAssessedLevelId] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
-  // Nível já aceito pela RPC nesta sessão: se só o update do perfil falhar, não repete a RPC.
-  const levelSelected = useRef<string | null>(null);
-
   useEffect(() => {
     if (!userId) return;
     let active = true;
-    levelSelected.current = null;
     getOnboardingState()
       .then((profile) => {
         if (!active) return;
@@ -90,12 +87,8 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const complete = useCallback(async (levelId: string, placementAttemptId?: string) => {
-    const key = `${levelId}:${placementAttemptId ?? ''}`;
-    if (levelSelected.current !== key) {
-      await placement.selectStartingLevel(levelId, placementAttemptId);
-      levelSelected.current = key;
-    }
-    await updateProfile({ onboarding_completed_at: new Date().toISOString() });
+    // Uma escrita só: se a RPC falhar, nada muda e o aluno pode tentar de novo.
+    await placement.selectStartingLevel(levelId, placementAttemptId);
     setStatus('done');
   }, []);
 

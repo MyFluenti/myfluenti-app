@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, usePreventRemove, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -41,16 +41,38 @@ export default function PlacementQuestionScreen() {
   const [busy, setBusy] = useState<'answer' | 'finish' | null>(null);
   const [error, setError] = useState<string | undefined>();
 
-  const goToResult = useCallback(
+  // Tentativa já encerrada: o resultado está gravado, só mostra.
+  const closed = state.error?.kind === 'known' && state.error.code === 'attempt_closed';
+
+  // Qualquer saída (X ou voltar do Android) pede confirmação. Ir para o resultado não.
+  const [leaving, setLeaving] = useState(false);
+  const disablePrevention = usePreventRemove(!leaving && !closed, ({ repeat }) => {
+    void confirm({
+      title: 'Sair do teste?',
+      message: 'Suas respostas ficam salvas. Quando voltar, você continua de onde parou.',
+      confirmLabel: 'Sair',
+      cancelLabel: 'Continuar o teste',
+    }).then((ok) => {
+      if (!ok) return;
+      setLeaving(true);
+      repeat();
+    });
+  });
+
+  const replaceWithResult = useCallback(
     () => router.replace({ pathname: '/placement/result', params: { attemptId } }),
     [router, attemptId],
   );
+  const goToResult = useCallback(() => {
+    setLeaving(true);
+    disablePrevention();
+    replaceWithResult();
+  }, [disablePrevention, replaceWithResult]);
 
-  // Tentativa já encerrada: o resultado está gravado, só mostra.
-  const closed = state.error?.kind === 'known' && state.error.code === 'attempt_closed';
+  // Com a tentativa encerrada a proteção já está desligada (`closed`).
   useEffect(() => {
-    if (closed) goToResult();
-  }, [closed, goToResult]);
+    if (closed) replaceWithResult();
+  }, [closed, replaceWithResult]);
 
   const data = state.data;
   const pending = useMemo(
@@ -61,14 +83,8 @@ export default function PlacementQuestionScreen() {
   const total = data?.items.length ?? 0;
   const answered = total - pending.length;
 
-  const exit = async () => {
-    const ok = await confirm({
-      title: 'Sair do teste?',
-      message: 'Suas respostas ficam salvas. Quando voltar, você continua de onde parou.',
-      confirmLabel: 'Sair',
-      cancelLabel: 'Continuar o teste',
-    });
-    if (!ok) return;
+  // A confirmação vem do usePreventRemove.
+  const exit = () => {
     if (router.canGoBack()) router.back();
     else router.replace('/');
   };
