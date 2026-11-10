@@ -108,7 +108,12 @@ export default function LessonScreen() {
   // Nas perguntas, qualquer saída (✕, voltar do Android, gesto do iOS) pede confirmação:
   // "Sair" só descarta a resposta ainda não enviada. Nas seções de leitura, o "‹ Módulo"
   // sai direto (a nota salva sozinha). Tentativa encerrada não tem o que perder.
-  const { sheet } = useExitGuard(!readOnly && step?.kind === 'question', 'lesson');
+  // Só com a pergunta na tela: em loading ou erro a folha não estaria visível e a
+  // proteção prenderia o aluno sem aviso.
+  const { sheet } = useExitGuard(
+    !state.loading && !state.error && !readOnly && step?.kind === 'question',
+    'lesson',
+  );
 
   const focusNote = () => {
     scroll.current?.scrollToEnd({ animated: !reduceMotion });

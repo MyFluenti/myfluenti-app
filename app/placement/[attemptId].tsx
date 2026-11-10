@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Button, ErrorState, Icon, LoadingState, ProgressBar, Text } from '@/components';
@@ -61,7 +61,17 @@ export default function PlacementQuestionScreen() {
     () => router.replace({ pathname: '/placement/result', params: { attemptId } }),
     [router, attemptId],
   );
+  // Se o aluno já saiu (ex.: "Sair" enquanto a última resposta ainda era enviada), a
+  // resposta que chega depois não leva ninguém ao resultado. A tentativa fica gravada.
+  const onScreen = useRef(true);
+  useEffect(
+    () => () => {
+      onScreen.current = false;
+    },
+    [],
+  );
   const goToResult = useCallback(() => {
+    if (!onScreen.current) return;
     allowLeave();
     replaceWithResult();
   }, [allowLeave, replaceWithResult]);

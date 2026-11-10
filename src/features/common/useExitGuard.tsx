@@ -1,5 +1,5 @@
 import { usePreventRemove } from 'expo-router';
-import { useCallback, useReducer } from 'react';
+import { useCallback, useReducer, useRef } from 'react';
 
 import { ConfirmSheet } from '@/components/ConfirmSheet';
 
@@ -17,12 +17,22 @@ import {
  */
 export function useExitGuard(enabled: boolean, kind: keyof typeof EXIT_COPY) {
   const [state, dispatch] = useReducer(exitGuardReducer, EXIT_GUARD_INITIAL);
-  const disablePrevention = usePreventRemove(exitGuardActive(enabled, state), ({ repeat }) =>
-    dispatch({ type: 'blocked', repeat }),
-  );
+  // A navegação bloqueada fica num ref também: "Sair" a repete uma vez só, mesmo com
+  // toque duplo antes de a tela renderizar de novo.
+  const repeatRef = useRef<(() => void) | null>(null);
+  const disablePrevention = usePreventRemove(exitGuardActive(enabled, state), ({ repeat }) => {
+    if (!repeatRef.current) repeatRef.current = repeat;
+    dispatch({ type: 'blocked', repeat });
+  });
+
+  const stay = () => {
+    repeatRef.current = null;
+    dispatch({ type: 'stay' });
+  };
 
   const leave = () => {
-    const repeat = state.pending;
+    const repeat = repeatRef.current;
+    repeatRef.current = null;
     dispatch({ type: 'leave' });
     repeat?.();
   };
@@ -40,7 +50,7 @@ export function useExitGuard(enabled: boolean, kind: keyof typeof EXIT_COPY) {
       message={copy.message}
       primaryLabel={copy.primary}
       secondaryLabel={copy.secondary}
-      onPrimary={() => dispatch({ type: 'stay' })}
+      onPrimary={stay}
       onSecondary={leave}
     />
   );

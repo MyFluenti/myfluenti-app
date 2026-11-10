@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ComponentRef } from 'react';
+import { useRef, type ComponentRef } from 'react';
 import { AccessibilityInfo, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -38,17 +38,13 @@ export function ConfirmSheet({
   const reduceMotion = useReduceMotion();
   const titleRef = useRef<ComponentRef<typeof View>>(null);
 
-  useEffect(() => {
-    if (!visible) return;
-    // Espera a folha montar antes de mover o foco.
-    const id = setTimeout(() => {
-      const node = titleRef.current;
-      if (!node) return;
-      if (Platform.OS === 'web') (node as unknown as { focus?: () => void }).focus?.();
-      else AccessibilityInfo.sendAccessibilityEvent(node, 'focus');
-    }, 50);
-    return () => clearTimeout(id);
-  }, [visible]);
+  // Foco no título quando a folha termina de abrir (no Android o Modal é outra janela).
+  const focusTitle = () => {
+    const node = titleRef.current;
+    if (!node) return;
+    if (Platform.OS === 'web') (node as unknown as { focus?: () => void }).focus?.();
+    else AccessibilityInfo.sendAccessibilityEvent(node, 'focus');
+  };
 
   return (
     <Modal
@@ -56,19 +52,24 @@ export function ConfirmSheet({
       transparent
       animationType={reduceMotion ? 'none' : 'slide'}
       onRequestClose={onPrimary}
+      onShow={focusTitle}
       statusBarTranslucent
     >
       <View style={styles.root}>
+        {/* Toque fora fecha. Fora da árvore de acessibilidade: o leitor de tela usa os
+            botões da folha (e o voltar do Android / o escape do VoiceOver). */}
         <Pressable
           style={StyleSheet.absoluteFill}
           onPress={onPrimary}
-          accessibilityRole="button"
-          accessibilityLabel={primaryLabel}
+          accessible={false}
+          importantForAccessibility="no"
+          aria-hidden
         />
         <View
           style={[styles.sheet, { paddingBottom: spacing['2xl'] + insets.bottom }]}
           // O Modal já é o diálogo na web; no iOS isto prende o leitor de tela na folha.
           accessibilityViewIsModal
+          onAccessibilityEscape={onPrimary}
         >
           <View style={styles.handle} aria-hidden />
           <View ref={titleRef} accessible accessibilityRole="header" focusable tabIndex={-1}>

@@ -85,7 +85,7 @@ function RootNavigator() {
       </Stack.Protected>
       <Stack.Protected guard={signedIn} redirectTo={home}>
         <Stack.Screen name="placement/intro" />
-        <Stack.Screen name="placement/[attemptId]" options={{ gestureEnabled: false }} />
+        <Stack.Screen name="placement/[attemptId]" />
         <Stack.Screen name="placement/result" options={{ gestureEnabled: false }} />
       </Stack.Protected>
       <Stack.Protected guard={!signedIn} redirectTo={home}>

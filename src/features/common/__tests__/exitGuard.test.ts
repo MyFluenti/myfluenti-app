@@ -55,11 +55,24 @@ describe('exitGuardReducer', () => {
 });
 
 describe('EXIT_COPY', () => {
-  it('uses the approved texts', () => {
-    expect(EXIT_COPY.test.title).toBe('Sair do teste?');
-    expect(EXIT_COPY.test.primary).toBe('Continuar teste');
-    expect(EXIT_COPY.lesson.title).toBe('Sair da aula?');
-    expect(EXIT_COPY.lesson.message).toContain('O que você já respondeu fica salvo.');
-    expect(EXIT_COPY.lesson.secondary).toBe('Sair');
+  // Textos aprovados pelo Gabriel em 2026-11-10 (telas 33 e 34).
+  it('uses the approved texts for the placement test', () => {
+    expect(EXIT_COPY.test).toEqual({
+      title: 'Sair do teste?',
+      message:
+        'A resposta que você ainda não enviou nesta pergunta será perdida. As perguntas já respondidas ficam salvas.',
+      primary: 'Continuar teste',
+      secondary: 'Sair',
+    });
+  });
+
+  it('uses the approved texts for the lesson', () => {
+    expect(EXIT_COPY.lesson).toEqual({
+      title: 'Sair da aula?',
+      message:
+        'A resposta que você ainda não enviou nesta pergunta será perdida. O que você já respondeu fica salvo.',
+      primary: 'Continuar aula',
+      secondary: 'Sair',
+    });
   });
 });
