@@ -109,6 +109,11 @@ export type RenderOptions = {
    */
   clip?: boolean;
   label?: string;
+  /**
+   * false: omite role e aria-label do <svg>. Use com SvgXml (react-native-svg), que repassa
+   * `aria-label` ao DOM como `ariaLabel` (atributo inválido); a acessibilidade fica na View.
+   */
+  a11yAttrs?: boolean;
 };
 
 let uid = 0;
@@ -117,14 +122,14 @@ let uid = 0;
 export function render(
   cfg: unknown,
   size: number,
-  { clip = true, label }: RenderOptions = {},
+  { clip = true, label, a11yAttrs = true }: RenderOptions = {},
 ): string {
   // Defesa em profundidade: sem isso, índice fora da faixa geraria SVG com "undefined".
   const c = isValidAvatarConfig(cfg) ? cfg : DEFAULT;
   const skin = SKIN[c.skin];
   const hair = HAIR[c.hairColor];
   let s =
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="' + size + '" height="' + size + '" role="img" aria-label="' + escapeAttr(label || 'Avatar') + '">';
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="' + size + '" height="' + size + '"' + (a11yAttrs ? ' role="img" aria-label="' + escapeAttr(label || 'Avatar') + '"' : '') + '>';
   if (clip) {
     const id = 'mfa' + ++uid;
     s += '<defs><clipPath id="' + id + '"><circle cx="50" cy="50" r="50"/></clipPath></defs>';

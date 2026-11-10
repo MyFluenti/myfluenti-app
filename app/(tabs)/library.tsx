@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -18,7 +18,17 @@ import type { LibrarySearchItem, LibraryType } from '@/types/contract';
 export default function LibraryScreen() {
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<LibraryType>('grammar');
+  // O atalho do Início abre direto na aba escolhida (?type=grammar|vocabulary).
+  const { type: typeParam } = useLocalSearchParams<{ type?: string }>();
+  const [activeTab, setActiveTab] = useState<LibraryType>(
+    typeParam === 'vocabulary' ? 'vocabulary' : 'grammar',
+  );
+  // Atalho acionado com a aba já montada: ajusta durante a renderização (sem efeito).
+  const [seenTypeParam, setSeenTypeParam] = useState(typeParam);
+  if (typeParam !== seenTypeParam) {
+    setSeenTypeParam(typeParam);
+    if (typeParam === 'grammar' || typeParam === 'vocabulary') setActiveTab(typeParam);
+  }
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
 
@@ -74,7 +84,7 @@ export default function LibraryScreen() {
             >
               <Text
                 variant="button"
-                color={activeTab === 'grammar' ? 'textPrimary' : 'textSecondary'}
+                color={activeTab === 'grammar' ? 'brandPrimaryLight' : 'textSecondary'}
               >
                 Gramática
               </Text>
@@ -93,7 +103,7 @@ export default function LibraryScreen() {
             >
               <Text
                 variant="button"
-                color={activeTab === 'vocabulary' ? 'textPrimary' : 'textSecondary'}
+                color={activeTab === 'vocabulary' ? 'brandPrimaryLight' : 'textSecondary'}
               >
                 Vocabulário
               </Text>
@@ -103,11 +113,8 @@ export default function LibraryScreen() {
           {/* Campo de busca */}
           <Input
             label="Buscar"
-            placeholder={
-              activeTab === 'grammar'
-                ? 'Buscar tópico (ex.: Simple Present, can...)'
-                : 'Buscar palavra ou tradução'
-            }
+            hideLabel
+            placeholder="Buscar tópico ou palavra"
             value={query}
             onChangeText={setQuery}
           />
@@ -173,18 +180,13 @@ export default function LibraryScreen() {
 
                     {hasMastery && (
                       <View style={styles.masteryContainer}>
-                        <View style={styles.masteryTextRow}>
-                          <Text variant="caption" color="textSecondary">
-                            Domínio
-                          </Text>
-                          <Text variant="caption" color="brandPrimaryLight">
-                            {Math.round(item.mastery_pct!)}%
-                          </Text>
-                        </View>
                         <ProgressBar
                           value={item.mastery_pct!}
                           accessibilityLabel={`Domínio: ${Math.round(item.mastery_pct!)}%`}
                         />
+                        <Text variant="label" color="textSecondary">
+                          Domínio {Math.round(item.mastery_pct!)}%
+                        </Text>
                       </View>
                     )}
                   </Pressable>
@@ -219,7 +221,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   segmentTabActive: {
-    backgroundColor: colors.bgElevated,
+    backgroundColor: colors.brandPrimarySubtle,
   },
   list: {
     gap: spacing.md,
@@ -249,10 +251,5 @@ const styles = StyleSheet.create({
   masteryContainer: {
     marginTop: spacing.xs,
     gap: spacing.xs,
-  },
-  masteryTextRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
   },
 });

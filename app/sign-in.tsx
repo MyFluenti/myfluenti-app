@@ -1,4 +1,4 @@
-import { Link } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
@@ -9,6 +9,7 @@ import { useScrollFocusedFieldIntoView } from '@/features/common/KeyboardAwareSc
 import { toAppError } from '@/services/errors';
 
 export default function SignInScreen() {
+  const router = useRouter();
   const { signIn } = useAuth();
   const scrollIntoView = useScrollFocusedFieldIntoView();
   const [email, setEmail] = useState('');
@@ -36,11 +37,12 @@ export default function SignInScreen() {
         Entrar
       </Text>
       <Text variant="bodyM" color="textSecondary">
-        Continue de onde parou.
+        Continue de onde você parou.
       </Text>
       <View style={authStyles.form}>
         <Input
           label="E-mail"
+          placeholder="voce@email.com"
           type="email"
           value={email}
           onChangeText={setEmail}
@@ -49,26 +51,26 @@ export default function SignInScreen() {
         />
         <Input
           label="Senha"
+          placeholder="Sua senha"
           type="password"
           value={password}
           onChangeText={setPassword}
           editable={!loading}
           onFocus={scrollIntoView}
           error={error}
-          onSubmitEditing={canSubmit ? submit : undefined}
+          returnKeyType="go"
+          onSubmitEditing={() => {
+            if (canSubmit && !loading) void submit();
+          }}
         />
         <Button label="Entrar" onPress={submit} loading={loading} disabled={!canSubmit} />
+        <Button
+          label="Criar conta"
+          variant="outline"
+          onPress={() => router.replace('/sign-up')}
+          disabled={loading}
+        />
       </View>
-      <Link
-        href="/sign-up"
-        style={authStyles.link}
-        accessibilityRole="link"
-        accessibilityLabel="Criar conta"
-      >
-        <Text variant="label" color="brandPrimaryLight">
-          Criar conta
-        </Text>
-      </Link>
     </AuthScreen>
   );
 }

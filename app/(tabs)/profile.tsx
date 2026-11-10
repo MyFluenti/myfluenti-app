@@ -86,98 +86,68 @@ export default function ProfileScreen() {
               />
             </View>
 
-            {/* Card: Seu nível atual */}
+            {/* Card: nível em estudo */}
             <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                <View style={styles.cardTitleGroup}>
-                  <Text variant="caption" color="textSecondary">
-                    NÍVEL EM ESTUDO
-                  </Text>
-                  <Text variant="heading2">
-                    {p.current_level
-                      ? `${p.current_level.code} · ${p.current_level.title}`
-                      : 'Nenhum nível definido'}
-                  </Text>
-                </View>
+              <View style={styles.rowBetween}>
+                <Text variant="bodyL" color="textSecondary">
+                  Seu nível de estudo
+                </Text>
                 {p.current_level ? (
                   <View style={styles.levelBadge}>
-                    <Text variant="heading3" color="brandPrimaryLight">
+                    <Text variant="label" color="brandPrimaryLight">
                       {p.current_level.code}
                     </Text>
                   </View>
-                ) : null}
+                ) : (
+                  <Text variant="label" color="textSecondary">
+                    Sem nível
+                  </Text>
+                )}
               </View>
 
-              <Text variant="bodyM" color="textSecondary">
+              <Text variant="caption" color="textSecondary">
                 {p.placement.completed
-                  ? 'Refazer o teste de nivelamento diagnostica seu conhecimento atual sem alterar seu nível em estudo.'
+                  ? 'Refazer o teste não muda o nível em que você estuda.'
                   : 'O teste de nivelamento ajuda a descobrir por onde começar.'}
               </Text>
 
               {/* TODO: abrir o nivelamento quando a rota existir. */}
               <Button
-                label={p.placement.completed ? 'Refazer o teste de nivelamento' : 'Fazer o nivelamento'}
+                label={p.placement.completed ? 'Refazer nivelamento' : 'Fazer o nivelamento'}
                 variant="outline"
                 onPress={() => notify('Nivelamento', 'O teste de nivelamento estará disponível em breve.')}
               />
             </View>
 
-            {/* Card: Plano */}
-            <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                <View style={styles.cardTitleGroup}>
-                  <Text variant="caption" color="textSecondary">
-                    PLANO DE ACESSO
-                  </Text>
-                  <Text variant="heading2">
-                    {isPremium ? 'Plano Premium' : 'Plano Gratuito'}
-                  </Text>
-                </View>
-                <Badge variant={isPremium ? 'premium' : 'free'} />
-              </View>
-
-              {!isPremium && (
-                <Button
-                  label="Conhecer o Premium"
-                  variant="secondary"
-                  onPress={() => notify('Plano Premium', 'A assinatura ainda não está disponível no app.')}
-                />
-              )}
+            {/* Card: plano atual (só o nome do plano, sem descrever o escopo) */}
+            <View style={[styles.card, styles.rowBetween]}>
+              <Text variant="bodyL" color="textSecondary">
+                Plano atual
+              </Text>
+              <Badge variant={isPremium ? 'premium' : 'free'} />
             </View>
 
-            {/* Card: Seu progresso geral */}
+            {/* Card: progresso */}
             <View style={styles.card}>
               <Text variant="heading3">Seu progresso</Text>
-
-              <View style={styles.statsGrid}>
-                <View style={styles.statBox}>
-                  <Text variant="caption" color="textSecondary">
-                    Aulas concluídas
-                  </Text>
-                  <Text variant="heading1">{p.progress.lessons_completed}</Text>
-                </View>
-                <View style={styles.statBox}>
-                  <Text variant="caption" color="textSecondary">
-                    Módulos concluídos
-                  </Text>
-                  <Text variant="heading1">{p.progress.modules_completed}</Text>
-                </View>
-                <View style={styles.statBox}>
-                  <Text variant="caption" color="textSecondary">
-                    Na revisão
-                  </Text>
-                  <Text variant="heading1">{p.review.total_scheduled}</Text>
-                </View>
-                <View style={styles.statBox}>
-                  <Text variant="caption" color="textSecondary">
-                    Favoritos
-                  </Text>
-                  <Text variant="heading1">{p.favorites_count}</Text>
-                </View>
+              <View style={styles.rowBetween}>
+                <Text variant="bodyM" color="textSecondary">
+                  Aulas concluídas
+                </Text>
+                <Text variant="label">{p.progress.lessons_completed}</Text>
               </View>
-
-              <View style={styles.divider} />
-
+              <View style={styles.rowBetween}>
+                <Text variant="bodyM" color="textSecondary">
+                  Módulos concluídos
+                </Text>
+                <Text variant="label">{p.progress.modules_completed}</Text>
+              </View>
+              <View style={styles.rowBetween}>
+                <Text variant="bodyM" color="textSecondary">
+                  Itens em revisão
+                </Text>
+                <Text variant="label">{p.review.total_scheduled}</Text>
+              </View>
               <Text variant="caption" color="textSecondary" style={styles.masteryDisclaimer}>
                 * O domínio de conteúdo é um indicador pedagógico de estudo e fixação, não medindo fluência real no idioma.
               </Text>
@@ -248,6 +218,12 @@ const styles = StyleSheet.create({
   userInfo: {
     alignItems: 'center',
     gap: spacing.xs,
+  },
+  rowBetween: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: spacing.md,
   },
   card: {
     backgroundColor: colors.bgSurface,

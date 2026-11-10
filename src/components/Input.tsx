@@ -24,6 +24,8 @@ export type InputProps = Omit<TextInputProps, 'style' | 'placeholderTextColor'> 
   error?: string;
   /** Só para showcase e testes visuais: força a aparência de foco. */
   forceFocused?: boolean;
+  /** Esconde o rótulo visual; ele continua como accessibilityLabel (ex.: campo de busca). */
+  hideLabel?: boolean;
 };
 
 export function Input({
@@ -31,6 +33,7 @@ export function Input({
   type = 'text',
   error,
   forceFocused = false,
+  hideLabel = false,
   value,
   onFocus,
   onBlur,
@@ -50,9 +53,7 @@ export function Input({
     ? colors.statusError
     : isFocused
       ? colors.brandPrimary
-      : value
-        ? colors.textSecondary
-        : colors.borderDefault;
+      : colors.borderDefault;
 
   const typeProps: TextInputProps =
     type === 'email'
@@ -74,10 +75,12 @@ export function Input({
 
   return (
     <View style={styles.wrapper}>
-      <Text variant="label" color="textSecondary">
-        {label}
-      </Text>
-      <View style={[styles.field, { borderColor }, disabled && styles.fieldDisabled]}>
+      {hideLabel ? null : (
+        <Text variant="label" color="textSecondary">
+          {label}
+        </Text>
+      )}
+      <View style={[styles.field, { borderColor, borderWidth: isFocused || error ? layout.borderWidthStrong : layout.borderWidth }, disabled && styles.fieldDisabled]}>
         <TextInput
           {...typeProps}
           {...rest}

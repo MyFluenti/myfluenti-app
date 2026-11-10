@@ -1,12 +1,13 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { LessonRow, Text } from '@/components';
+import { LessonRow, ProgressBar, Text } from '@/components';
 import type { LessonStatus } from '@/components/LessonRow';
-import { Icon } from '@/components/icons';
 import { Screen } from '@/features/common/Screen';
+import { moduleTitle } from '@/features/course/format';
+import { useCourseOverview } from '@/features/course/useCourseOverview';
 import { useModuleLessons } from '@/features/course/useModuleLessons';
-import { colors, layout, opacity, spacing } from '@/theme/tokens';
+import { layout, opacity, spacing } from '@/theme/tokens';
 
 /** Mapeia o `status` da RPC para o `LessonStatus` do componente. */
 function toLessonStatus(status: string): LessonStatus {
@@ -20,24 +21,39 @@ export default function ModuleScreen() {
   const { moduleId, title } = useLocalSearchParams<{ moduleId: string; title?: string }>();
   const router = useRouter();
   const state = useModuleLessons(moduleId);
+  // Progresso e título do módulo vêm do overview (mesmo dado do Curso).
+  const overview = useCourseOverview();
+  const current = overview.data?.find((m) => m.module_id === moduleId);
+  const heading = (current ? moduleTitle(current) : title) || 'Aulas';
 
   return (
     <Screen state={state}>
       {(lessons) => (
         <>
-          {/* Cabeçalho com botão voltar */}
           <View style={styles.header}>
             <Pressable
               onPress={() => router.back()}
               accessibilityRole="button"
-              accessibilityLabel="Voltar"
+              accessibilityLabel="Voltar ao curso"
               style={({ pressed }) => [styles.backButton, { opacity: pressed ? opacity.pressed : 1 }]}
             >
-              <Icon name="arrow-left" color="textPrimary" size={layout.iconSize} />
+              <Text variant="label" color="brandPrimaryLight">
+                ‹ Curso
+              </Text>
             </Pressable>
-            <Text variant="heading2" style={styles.headerTitle}>
-              {title || 'Aulas'}
+            <Text variant="display" accessibilityRole="header">
+              {heading}
             </Text>
+            <Text variant="bodyM" color="textSecondary">
+              Faça as aulas em qualquer ordem. Conclua todas as obrigatórias para liberar o próximo
+              módulo.
+            </Text>
+            {current ? (
+              <ProgressBar
+                value={current.progress_pct}
+                accessibilityLabel={`Progresso do módulo: ${Math.round(current.progress_pct)}%`}
+              />
+            ) : null}
           </View>
 
           {lessons.length === 0 ? (
@@ -67,19 +83,12 @@ export default function ModuleScreen() {
 
 const styles = StyleSheet.create({
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingBottom: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderDefault,
+    gap: spacing.sm,
   },
   backButton: {
-    minWidth: layout.minTouchTarget,
+    alignSelf: 'flex-start',
     minHeight: layout.minTouchTarget,
-    alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitle: { flex: 1 },
   list: { gap: spacing.sm },
 });
