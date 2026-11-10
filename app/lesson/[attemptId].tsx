@@ -1,11 +1,12 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useMemo, useRef, useState, type ComponentRef } from 'react';
-import { Pressable, StyleSheet, View, type TextInput } from 'react-native';
+import { Pressable, StyleSheet, View, type ScrollView, type TextInput } from 'react-native';
 
 import { Button, ContentBlocks, Icon, LoadingState, ProgressBar, Text } from '@/components';
 import { parseContent, type ContentExample } from '@/components/ContentBlocks';
 import { notify } from '@/features/common/dialogs';
 import { FlowScreen } from '@/features/common/FlowScreen';
+import { useExitGuard } from '@/features/common/useExitGuard';
 import { LoadError } from '@/features/lesson/LoadError';
 import { SectionNote } from '@/features/lesson/SectionNote';
 import {
@@ -25,6 +26,7 @@ import {
   type AnswerDraft,
 } from '@/features/questions/answer';
 import { useAsync } from '@/hooks/useAsync';
+import { useReduceMotion } from '@/hooks/useReduceMotion';
 import { toAppError } from '@/services/errors';
 import {
   addPhraseFavorite,
@@ -100,6 +102,18 @@ export default function LessonScreen() {
   const [error, setError] = useState<string | undefined>();
   const [missing, setMissing] = useState<string | undefined>();
   const noteInput = useRef<ComponentRef<typeof TextInput>>(null);
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
+  const reduceMotion = useReduceMotion();
+
+  // Nas perguntas, qualquer saída (✕, voltar do Android, gesto do iOS) pede confirmação:
+  // "Sair" só descarta a resposta ainda não enviada. Nas seções de leitura, o "‹ Módulo"
+  // sai direto (a nota salva sozinha). Tentativa encerrada não tem o que perder.
+  const { sheet } = useExitGuard(!readOnly && step?.kind === 'question', 'lesson');
+
+  const focusNote = () => {
+    scroll.current?.scrollToEnd({ animated: !reduceMotion });
+    noteInput.current?.focus();
+  };
 
   const goTo = (next: number) => {
     setIndex(next);
@@ -253,37 +267,51 @@ export default function LessonScreen() {
         ? `${step.number} de ${step.total}`
         : null;
 
+  const questionHeader = step?.kind === 'question';
   const header = (
     <>
-      <View style={styles.topRow}>
-        <Pressable
-          onPress={leave}
-          disabled={busy === 'finish'}
-          accessibilityRole="button"
-          accessibilityLabel="Voltar ao módulo"
-          accessibilityState={{ disabled: busy === 'finish' }}
-          hitSlop={spacing.sm}
-          style={({ pressed }) => [styles.back, { opacity: pressed ? opacity.pressed : 1 }]}
-        >
-          <Text variant="label" color="textSecondary">
-            ‹ Módulo
-          </Text>
-        </Pressable>
-        {step?.kind === 'section' && extras.data?.notes ? (
+      {questionHeader ? null : (
+        <View style={styles.topRow}>
           <Pressable
-            onPress={() => noteInput.current?.focus()}
+            onPress={leave}
+            disabled={busy === 'finish'}
             accessibilityRole="button"
-            accessibilityLabel="Escrever nota sobre esta seção"
+            accessibilityLabel="Voltar ao módulo"
+            accessibilityState={{ disabled: busy === 'finish' }}
             hitSlop={spacing.sm}
-            style={({ pressed }) => [styles.iconButton, { opacity: pressed ? opacity.pressed : 1 }]}
+            style={({ pressed }) => [styles.back, { opacity: pressed ? opacity.pressed : 1 }]}
           >
-            <Icon name="pencil" color="textSecondary" size={layout.iconSize} />
+            <Text variant="label" color="textSecondary">
+              ‹ Módulo
+            </Text>
           </Pressable>
-        ) : null}
-      </View>
+          {step?.kind === 'section' && extras.data?.notes ? (
+            <Pressable
+              onPress={focusNote}
+              accessibilityRole="button"
+              accessibilityLabel="Escrever nota sobre esta seção"
+              hitSlop={spacing.sm}
+              style={({ pressed }) => [styles.iconButton, { opacity: pressed ? opacity.pressed : 1 }]}
+            >
+              <Icon name="pencil" color="textSecondary" size={layout.iconSize} />
+            </Pressable>
+          ) : null}
+        </View>
+      )}
       {content ? (
         <>
           <View style={styles.titleRow}>
+            {questionHeader ? (
+              <Pressable
+                onPress={leave}
+                accessibilityRole="button"
+                accessibilityLabel="Sair da aula"
+                hitSlop={spacing.sm}
+                style={({ pressed }) => [styles.close, { opacity: pressed ? opacity.pressed : 1 }]}
+              >
+                <Icon name="close" color="textSecondary" size={layout.iconSize} />
+              </Pressable>
+            ) : null}
             <Text variant="heading3" style={styles.title} numberOfLines={2}>
               {content.lesson.title}
             </Text>
@@ -397,6 +425,7 @@ export default function LessonScreen() {
 
     return (
       <FlowScreen
+        scrollRef={scroll}
         header={header}
         footer={
           <>
@@ -526,6 +555,7 @@ export default function LessonScreen() {
         ) : null}
         {answered ? <AnswerFeedback result={answered} /> : null}
       </View>
+      {sheet}
     </FlowScreen>
   );
 }
@@ -552,6 +582,13 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   title: { flex: 1 },
+  close: {
+    minWidth: layout.minTouchTarget,
+    minHeight: layout.minTouchTarget,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: -spacing.md,
+  },
   section: { gap: spacing.lg, marginTop: spacing.sm },
   tag: {
     alignSelf: 'flex-start',

@@ -1,0 +1,49 @@
+import { usePreventRemove } from 'expo-router';
+import { useCallback, useReducer } from 'react';
+
+import { ConfirmSheet } from '@/components/ConfirmSheet';
+
+import {
+  EXIT_COPY,
+  EXIT_GUARD_INITIAL,
+  exitGuardActive,
+  exitGuardReducer,
+} from './exitGuard';
+
+/**
+ * Pede confirmação em qualquer saída da tela enquanto `enabled` (✕, voltar do Android,
+ * gesto do iOS, voltar do navegador). "Sair" só descarta o que não foi enviado: nada
+ * chama RPC aqui. `allowLeave` libera a saída sem perguntar (ex.: ir para o resultado).
+ */
+export function useExitGuard(enabled: boolean, kind: keyof typeof EXIT_COPY) {
+  const [state, dispatch] = useReducer(exitGuardReducer, EXIT_GUARD_INITIAL);
+  const disablePrevention = usePreventRemove(exitGuardActive(enabled, state), ({ repeat }) =>
+    dispatch({ type: 'blocked', repeat }),
+  );
+
+  const leave = () => {
+    const repeat = state.pending;
+    dispatch({ type: 'leave' });
+    repeat?.();
+  };
+
+  const allowLeave = useCallback(() => {
+    dispatch({ type: 'allow' });
+    disablePrevention();
+  }, [disablePrevention]);
+
+  const copy = EXIT_COPY[kind];
+  const sheet = (
+    <ConfirmSheet
+      visible={state.pending !== null}
+      title={copy.title}
+      message={copy.message}
+      primaryLabel={copy.primary}
+      secondaryLabel={copy.secondary}
+      onPrimary={() => dispatch({ type: 'stay' })}
+      onSecondary={leave}
+    />
+  );
+
+  return { sheet, allowLeave };
+}
