@@ -18,6 +18,8 @@ export const KNOWN_CODES = [
   'account_not_found',
   'invalid_avatar_config',
   'profile_not_found',
+  'attempt_not_found',
+  'attempt_closed',
 ] as const;
 export type KnownCode = (typeof KNOWN_CODES)[number];
 
@@ -55,6 +57,8 @@ const KNOWN_MESSAGES: Record<KnownCode, string> = {
   account_not_found: 'Esta conta já foi excluída.',
   invalid_avatar_config: 'Esse avatar não é válido. Escolha as peças de novo.',
   profile_not_found: 'Não encontramos o seu perfil.',
+  attempt_not_found: 'Não encontramos essa tentativa.',
+  attempt_closed: 'Essa tentativa já foi encerrada.',
 };
 
 const MESSAGES: Record<Exclude<AppErrorKind, 'known'>, string> = {

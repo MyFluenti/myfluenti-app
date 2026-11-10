@@ -2,7 +2,7 @@ import type { ProfileSummary } from '@/types/contract';
 import type { Database } from '@/types/database';
 import { getDeviceTimezone } from '@/utils/timezone';
 
-import { assertOk } from './errors';
+import { AppError, assertOk } from './errors';
 import { rpc } from './rpc';
 import { requireUserId } from './session';
 import { supabase } from './supabase';
@@ -34,4 +34,23 @@ export async function updateProfile(patch: ProfilePatch): Promise<void> {
   }
   const userId = await requireUserId();
   assertOk(await supabase.from('profiles').update(safe as ProfilePatch).eq('id', userId));
+}
+
+export type OnboardingState = {
+  onboarding_completed_at: string | null;
+  self_assessed_level_id: string | null;
+  current_level_id: string | null;
+};
+
+/** Campos do próprio perfil que decidem a porta de entrada (autoavaliação e nivelamento). */
+export async function getOnboardingState(): Promise<OnboardingState> {
+  const userId = await requireUserId();
+  const result = await supabase
+    .from('profiles')
+    .select('onboarding_completed_at, self_assessed_level_id, current_level_id')
+    .eq('id', userId)
+    .maybeSingle();
+  assertOk(result);
+  if (!result.data) throw new AppError({ kind: 'known', code: 'profile_not_found' });
+  return result.data;
 }

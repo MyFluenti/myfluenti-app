@@ -22,6 +22,44 @@ export type PlacementResult = {
   competency_breakdown: unknown;
 };
 
+export type PlacementCompetency = 'vocabulary' | 'grammar' | 'reading' | 'construction';
+
+export type PlacementQuestion = {
+  id: string;
+  question_type: string;
+  prompt: string;
+  prompt_data: unknown;
+  options: { id: string; text: string; position: number }[];
+};
+
+/** Retorno de get_placement_items (api.md 9.2). Sem acerto, peso ou explicação. */
+export type PlacementItems = {
+  attempt: {
+    id: string;
+    status: 'in_progress';
+    placement_test_id: string;
+    total_questions: number;
+    answered_count: number;
+  };
+  items: {
+    position: number;
+    competency: string;
+    answered: boolean;
+    question: PlacementQuestion;
+  }[];
+};
+
+/** Linha própria de user_placement_attempts (select permitido pelo RLS). */
+export type PlacementAttemptRow = {
+  id: string;
+  status: string;
+  score_pct: number | null;
+  recommended_level_id: string | null;
+  competency_breakdown: unknown;
+};
+
+export type Level = { id: string; code: string; title: string; position: number };
+
 export type LessonAnswerResult = {
   is_correct: boolean;
   awarded_points: number;
