@@ -51,6 +51,7 @@ function RootNavigator() {
         <Stack.Screen name="profile/settings" />
         <Stack.Screen name="profile/edit" />
         <Stack.Screen name="profile/delete-account" />
+        <Stack.Screen name="profile/avatar" />
         <Stack.Screen name="dev/showcase" />
       </Stack.Protected>
       <Stack.Protected guard={!signedIn}>

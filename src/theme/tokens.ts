@@ -88,12 +88,17 @@ export const layout = {
   lessonRowMinHeight: 64,
   borderWidth: 1,
   avatarSize: 64,
+  avatarProfile: 112,
+  avatarPreview: 160,
+  avatarTile: 60,
   formItemMinWidth: 100,
 } as const;
 
 // Opacidade só para feedback de toque (pressed). Estado desabilitado usa cores, não opacidade.
 export const opacity = {
   pressed: 0.85,
+  /** Amostra de cor indisponível (ex.: cor do cabelo com "Sem cabelo"). */
+  muted: 0.35,
 } as const;
 
 export const theme = {
