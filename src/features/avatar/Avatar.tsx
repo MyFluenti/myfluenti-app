@@ -11,9 +11,16 @@ export type AvatarProps = {
   config: AvatarConfig | null;
   size: number;
   accessibilityLabel?: string;
+  /** Sem acessibilidade própria (ex.: dentro de uma peça que já tem rótulo). */
+  decorative?: boolean;
 };
 
-export function Avatar({ config, size, accessibilityLabel = 'Seu avatar' }: AvatarProps) {
+export function Avatar({
+  config,
+  size,
+  accessibilityLabel = 'Seu avatar',
+  decorative = false,
+}: AvatarProps) {
   const cfg = isValidAvatarConfig(config) ? config : DEFAULT;
   // O recorte circular é do View (clip: false), então o SVG não precisa de id único.
   const xml = useMemo(
@@ -23,9 +30,17 @@ export function Avatar({ config, size, accessibilityLabel = 'Seu avatar' }: Avat
 
   return (
     <View
-      accessible
-      accessibilityRole="image"
-      accessibilityLabel={accessibilityLabel}
+      {...(decorative
+        ? {
+            accessible: false,
+            accessibilityElementsHidden: true,
+            importantForAccessibility: 'no-hide-descendants' as const,
+          }
+        : {
+            accessible: true,
+            accessibilityRole: 'image' as const,
+            accessibilityLabel,
+          })}
       style={[styles.clip, { width: size, height: size, borderRadius: size / 2 }]}
     >
       <SvgXml xml={xml} width={size} height={size} />

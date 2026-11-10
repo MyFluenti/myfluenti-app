@@ -26,7 +26,19 @@ const TABS: { key: TabKey; label: string }[] = [
 ];
 
 /** "Sem cabelo": a cor do cabelo não tem efeito. */
-const BALD = 5;
+const BALD = NAMES.hair.indexOf('Sem cabelo');
+const LOCKED_HINT = 'Indisponível com o estilo Sem cabelo';
+
+const GROUP_LABEL: Record<AvatarPart, string> = {
+  skin: 'Tom de pele',
+  hair: 'Estilo',
+  hairColor: 'Cor do cabelo',
+  eyes: 'Olhos',
+  mouth: 'Boca',
+  acc: 'Acessório',
+  outfit: 'Roupa',
+  bg: 'Fundo',
+};
 
 export default function AvatarEditorScreen() {
   const router = useRouter();
@@ -121,7 +133,7 @@ function Editor({ initial, onClose, onUnauthenticated }: EditorProps) {
   );
 
   const tiles = (part: AvatarPart) => (
-    <View style={styles.grid}>
+    <View accessibilityRole="radiogroup" accessibilityLabel={GROUP_LABEL[part]} style={styles.grid}>
       {NAMES[part].map((name, i) => (
         <Tile
           key={name}
@@ -136,7 +148,7 @@ function Editor({ initial, onClose, onUnauthenticated }: EditorProps) {
   );
 
   const swatches = (part: AvatarPart, palette: string[], check: ColorToken, disabled = false) => (
-    <View style={styles.swatches}>
+    <View accessibilityRole="radiogroup" accessibilityLabel={GROUP_LABEL[part]} style={styles.swatches}>
       {NAMES[part].map((name, i) => (
         <Swatch
           key={name}
@@ -145,6 +157,7 @@ function Editor({ initial, onClose, onUnauthenticated }: EditorProps) {
           check={check}
           selected={draft[part] === i}
           disabled={disabled || saving}
+          hint={disabled ? LOCKED_HINT : undefined}
           onPress={() => pick(part, i)}
         />
       ))}
@@ -292,7 +305,7 @@ function Tile({ name, selected, config, disabled, onPress }: TileProps) {
         { opacity: pressed ? opacity.pressed : 1 },
       ]}
     >
-      <Avatar config={config} size={layout.avatarTile} accessibilityLabel={name} />
+      <Avatar config={config} size={layout.avatarTile} decorative />
       <Text variant="caption" color={selected ? 'brandPrimaryLight' : 'textSecondary'}>
         {name}
       </Text>
@@ -311,14 +324,16 @@ type SwatchProps = {
   check: ColorToken;
   selected: boolean;
   disabled: boolean;
+  hint?: string;
   onPress: () => void;
 };
 
-function Swatch({ name, color, check, selected, disabled, onPress }: SwatchProps) {
+function Swatch({ name, color, check, selected, disabled, hint, onPress }: SwatchProps) {
   return (
     <Pressable
       accessibilityRole="radio"
       accessibilityLabel={name}
+      accessibilityHint={hint}
       accessibilityState={{ selected, checked: selected, disabled }}
       disabled={disabled}
       onPress={onPress}
