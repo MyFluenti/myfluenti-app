@@ -1,5 +1,5 @@
 import { useLocalSearchParams, usePreventRemove, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Button, ErrorState, Icon, LoadingState, ProgressBar, Text } from '@/components';
@@ -44,20 +44,32 @@ export default function PlacementQuestionScreen() {
   // Tentativa já encerrada: o resultado está gravado, só mostra.
   const closed = state.error?.kind === 'known' && state.error.code === 'attempt_closed';
 
-  // Qualquer saída (X ou voltar do Android) pede confirmação. Ir para o resultado não.
+  // Qualquer saída (X ou voltar do Android) pede confirmação, mas só com o teste carregado
+  // (no erro de carregamento não há respostas a proteger). Ir para o resultado não pede.
   const [leaving, setLeaving] = useState(false);
-  const disablePrevention = usePreventRemove(!leaving && !closed, ({ repeat }) => {
-    void confirm({
-      title: 'Sair do teste?',
-      message: 'Suas respostas ficam salvas. Quando voltar, você continua de onde parou.',
-      confirmLabel: 'Sair',
-      cancelLabel: 'Continuar o teste',
-    }).then((ok) => {
-      if (!ok) return;
-      setLeaving(true);
-      repeat();
-    });
-  });
+  // Um diálogo por vez: toque duplo no X (ou X + voltar) não empilha confirmações.
+  const asking = useRef(false);
+  const disablePrevention = usePreventRemove(
+    !leaving && !closed && state.data !== null,
+    ({ repeat }) => {
+      if (asking.current) return;
+      asking.current = true;
+      void confirm({
+        title: 'Sair do teste?',
+        message: 'Suas respostas ficam salvas. Quando voltar, você continua de onde parou.',
+        confirmLabel: 'Sair',
+        cancelLabel: 'Continuar o teste',
+      })
+        .then((ok) => {
+          if (!ok) return;
+          setLeaving(true);
+          repeat();
+        })
+        .finally(() => {
+          asking.current = false;
+        });
+    },
+  );
 
   const replaceWithResult = useCallback(
     () => router.replace({ pathname: '/placement/result', params: { attemptId } }),
@@ -69,10 +81,13 @@ export default function PlacementQuestionScreen() {
     replaceWithResult();
   }, [disablePrevention, replaceWithResult]);
 
-  // Com a tentativa encerrada a proteção já está desligada (`closed`).
+  // Com a tentativa encerrada a proteção já está desligada (`closed`); o
+  // disablePrevention só garante a ordem, como em goToResult.
   useEffect(() => {
-    if (closed) replaceWithResult();
-  }, [closed, replaceWithResult]);
+    if (!closed) return;
+    disablePrevention();
+    replaceWithResult();
+  }, [closed, disablePrevention, replaceWithResult]);
 
   const data = state.data;
   const pending = useMemo(
