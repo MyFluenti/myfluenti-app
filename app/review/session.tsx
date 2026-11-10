@@ -4,7 +4,6 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
-  AnswerOption,
   Button,
   EmptyState,
   ErrorState,
@@ -12,12 +11,15 @@ import {
   LoadingState,
   ProgressBar,
   Text,
-  TextAnswerInput,
-  WordOrderAnswer,
-  joinTokens,
 } from '@/components';
-import type { AnswerOptionState } from '@/components/AnswerOption';
 import { confirm, notify } from '@/features/common/dialogs';
+import { QuestionAnswerInput } from '@/features/questions/QuestionAnswerInput';
+import {
+  EMPTY_DRAFT,
+  canSubmitDraft,
+  toAnswerPayload,
+  type AnswerDraft,
+} from '@/features/questions/answer';
 import {
   finishReviewSession,
   getReviewQueue,
@@ -29,32 +31,12 @@ import {
 import { toAppError, type AppError } from '@/services/errors';
 import { colors, layout, opacity, radius, spacing } from '@/theme/tokens';
 import type {
-  AnswerPayload,
   ReviewAnswerResult,
   ReviewQueueItem,
   ReviewSummary,
 } from '@/types/contract';
 
-type AnswerMode = 'options' | 'text' | 'word_order';
-
 type ReviewQuestion = Extract<ReviewQueueItem, { item_type: 'question' }>['question'];
-
-/** Tokens de word_order exatamente como vieram do backend (sem reordenar). */
-function wordOrderTokens(q: ReviewQuestion): string[] | null {
-  const tokens = (q.prompt_data as { tokens?: unknown } | null | undefined)?.tokens;
-  return Array.isArray(tokens) && tokens.length > 0 && tokens.every((t) => typeof t === 'string')
-    ? (tokens as string[])
-    : null;
-}
-
-/** Só escolhe o componente de entrada pelo tipo; quem corrige é o backend. */
-function answerModeOf(q: ReviewQuestion): AnswerMode {
-  if (q.question_type === 'word_order' && wordOrderTokens(q)) return 'word_order';
-  if (q.question_type === 'fill_blank' || q.question_type === 'translation') return 'text';
-  // multiple_choice, error_identification, error_correction e tipos desconhecidos:
-  // opções se houver, senão campo de texto.
-  return q.options.length > 0 ? 'options' : 'text';
-}
 
 export default function ReviewSessionScreen() {
   const router = useRouter();
@@ -66,9 +48,7 @@ export default function ReviewSessionScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   // Estado da questão atual
-  const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
-  const [textAnswer, setTextAnswer] = useState('');
-  const [tokenAnswer, setTokenAnswer] = useState<string[]>([]);
+  const [draft, setDraft] = useState<AnswerDraft>(EMPTY_DRAFT);
   const [submittingAnswer, setSubmittingAnswer] = useState(false);
   const [answerResult, setAnswerResult] = useState<ReviewAnswerResult | null>(null);
   const [recordingResult, setRecordingResult] = useState(false);
@@ -87,9 +67,7 @@ export default function ReviewSessionScreen() {
       setSessionId(sid);
       setItems(queue.items);
       setCurrentIndex(0);
-      setSelectedOptionId(null);
-      setTextAnswer('');
-      setTokenAnswer([]);
+      setDraft(EMPTY_DRAFT);
       setAnswerResult(null);
       setNeedsRating(false);
     } catch (e) {
@@ -121,9 +99,7 @@ export default function ReviewSessionScreen() {
 
   const handleNext = useCallback(
     async (nextIdx: number, sid: string) => {
-      setSelectedOptionId(null);
-      setTextAnswer('');
-      setTokenAnswer([]);
+      setDraft(EMPTY_DRAFT);
       setAnswerResult(null);
       setNeedsRating(false);
 
@@ -186,29 +162,14 @@ export default function ReviewSessionScreen() {
 
   // Envia a resposta da questão
   /** "Responder" só habilita com resposta: opção escolhida, texto não vazio ou 1+ token. */
-  const canSubmit = (q: ReviewQuestion): boolean => {
-    const mode = answerModeOf(q);
-    if (mode === 'options') return selectedOptionId !== null;
-    if (mode === 'word_order') return tokenAnswer.length >= 1;
-    return textAnswer.trim().length > 0;
-  };
+  const canSubmit = (q: ReviewQuestion): boolean => canSubmitDraft(q, draft);
 
   const handleSubmitAnswer = async () => {
     const currentItem = items[currentIndex];
     if (!sessionId || currentItem?.item_type !== 'question') return;
 
-    const mode = answerModeOf(currentItem.question);
-    let payload: AnswerPayload;
-    if (mode === 'options') {
-      if (!selectedOptionId) return;
-      payload = { option_id: selectedOptionId };
-    } else if (mode === 'word_order') {
-      if (tokenAnswer.length === 0) return;
-      payload = { text: joinTokens(tokenAnswer) };
-    } else {
-      if (textAnswer.trim().length === 0) return;
-      payload = { text: textAnswer.trim() };
-    }
+    const payload = toAnswerPayload(currentItem.question, draft);
+    if (!payload) return;
 
     setSubmittingAnswer(true);
     try {
@@ -457,64 +418,13 @@ export default function ReviewSessionScreen() {
               {currentItem.question.prompt}
             </Text>
 
-            {(() => {
-              const q = currentItem.question;
-              const mode = answerModeOf(q);
-              const locked = answerResult !== null || submittingAnswer || needsRating;
-
-              if (mode === 'word_order') {
-                return (
-                  <WordOrderAnswer
-                    tokens={wordOrderTokens(q) ?? []}
-                    value={tokenAnswer}
-                    onChange={setTokenAnswer}
-                    disabled={locked}
-                  />
-                );
-              }
-
-              if (mode === 'text') {
-                return (
-                  <TextAnswerInput
-                    value={textAnswer}
-                    onChangeText={setTextAnswer}
-                    disabled={locked}
-                    questionType={q.question_type}
-                    promptData={q.prompt_data}
-                  />
-                );
-              }
-
-              return (
-                <View style={styles.optionsList}>
-                  {q.options
-                    .slice()
-                    .sort((x, y) => x.position - y.position)
-                    .map((opt) => {
-                      let optState: AnswerOptionState = 'normal';
-                      const isSelected = selectedOptionId === opt.id;
-
-                      if (answerResult) {
-                        if (isSelected) {
-                          optState = answerResult.is_correct ? 'correct' : 'incorrect';
-                        }
-                      } else if (isSelected) {
-                        optState = 'selected';
-                      }
-
-                      return (
-                        <AnswerOption
-                          key={opt.id}
-                          label={opt.text}
-                          state={optState}
-                          disabled={locked}
-                          onPress={() => setSelectedOptionId(opt.id)}
-                        />
-                      );
-                    })}
-                </View>
-              );
-            })()}
+            <QuestionAnswerInput
+              question={currentItem.question}
+              draft={draft}
+              onChange={setDraft}
+              disabled={answerResult !== null || submittingAnswer || needsRating}
+              result={answerResult}
+            />
 
             {/* O backend pediu o botão de uma questão já respondida nesta sessão */}
             {!answerResult && needsRating && (
@@ -652,9 +562,6 @@ const styles = StyleSheet.create({
   },
   prompt: {
     marginTop: spacing.sm,
-  },
-  optionsList: {
-    gap: spacing.md,
   },
   actionContainer: {
     marginTop: spacing.md,

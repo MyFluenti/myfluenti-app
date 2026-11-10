@@ -5,7 +5,6 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Badge, Button, Icon, Text } from '@/components';
 import { Avatar } from '@/features/avatar/Avatar';
 import { toAvatarConfig } from '@/features/avatar/validate';
-import { notify } from '@/features/common/dialogs';
 import { Screen } from '@/features/common/Screen';
 import { useProfileSummary } from '@/features/profile/useProfileSummary';
 import { colors, layout, opacity, radius, spacing, typography } from '@/theme/tokens';
@@ -111,11 +110,10 @@ export default function ProfileScreen() {
                   : 'O teste de nivelamento ajuda a descobrir por onde começar.'}
               </Text>
 
-              {/* TODO: abrir o nivelamento quando a rota existir. */}
               <Button
                 label={p.placement.completed ? 'Refazer nivelamento' : 'Fazer o nivelamento'}
                 variant="outline"
-                onPress={() => notify('Nivelamento', 'O teste de nivelamento estará disponível em breve.')}
+                onPress={() => router.push('/placement/intro')}
               />
             </View>
 
