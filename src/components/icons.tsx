@@ -14,7 +14,9 @@ export type IconName =
   | 'lock'
   | 'arrow-left'
   | 'chevron-right'
-  | 'settings';
+  | 'settings'
+  | 'pencil'
+  | 'dice';
 
 export type IconProps = {
   name: IconName;
@@ -82,6 +84,20 @@ export function Icon({ name, color = 'textPrimary', size = layout.iconSize }: Ic
       )}
       {name === 'arrow-left' && <Path d="M19 12H5M12 5l-7 7 7 7" />}
       {name === 'chevron-right' && <Path d="M9 18l6-6-6-6" />}
+      {name === 'pencil' && (
+        <>
+          <Path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+          <Path d="m15 5 4 4" />
+        </>
+      )}
+      {name === 'dice' && (
+        <>
+          <Rect x={3} y={3} width={18} height={18} rx={4} />
+          <Circle cx={8.5} cy={8.5} r={1} fill={stroke} />
+          <Circle cx={15.5} cy={15.5} r={1} fill={stroke} />
+          <Circle cx={12} cy={12} r={1} fill={stroke} />
+        </>
+      )}
       {name === 'settings' && (
         <>
           <Path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />

@@ -187,7 +187,8 @@ export type ReviewSummary = {
 export type ProfileSummary = {
   display_name: string | null;
   email: string;
-  avatar_url: string | null;
+  /** Objeto v1 ou null (avatar padrão). Vem do banco; valide antes de usar. */
+  avatar_config: unknown;
   current_level: { id: string; code: string; title: string } | null;
   plan_tier: AccessTier;
   placement: {

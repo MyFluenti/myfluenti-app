@@ -16,6 +16,8 @@ export const KNOWN_CODES = [
   'section_not_in_lesson',
   'confirmation_required',
   'account_not_found',
+  'invalid_avatar_config',
+  'profile_not_found',
 ] as const;
 export type KnownCode = (typeof KNOWN_CODES)[number];
 
@@ -51,6 +53,8 @@ const KNOWN_MESSAGES: Record<KnownCode, string> = {
   section_not_in_lesson: 'Essa seção não pertence à aula escolhida.',
   confirmation_required: 'Digite EXCLUIR para confirmar a exclusão da conta.',
   account_not_found: 'Esta conta já foi excluída.',
+  invalid_avatar_config: 'Esse avatar não é válido. Escolha as peças de novo.',
+  profile_not_found: 'Não encontramos o seu perfil.',
 };
 
 const MESSAGES: Record<Exclude<AppErrorKind, 'known'>, string> = {

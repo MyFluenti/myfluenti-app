@@ -1,34 +1,35 @@
-import { Link, useRouter } from 'expo-router';
+import { Link, useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useRef } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Badge, Button, Icon, Text } from '@/components';
+import { Avatar } from '@/features/avatar/Avatar';
+import { toAvatarConfig } from '@/features/avatar/validate';
 import { notify } from '@/features/common/dialogs';
 import { Screen } from '@/features/common/Screen';
 import { useProfileSummary } from '@/features/profile/useProfileSummary';
 import { colors, layout, opacity, radius, spacing, typography } from '@/theme/tokens';
 
-/** Iniciais do nome; sem nome, do e-mail; sem nenhum dos dois, "?". */
-function getInitials(name: string | null | undefined, email: string | null | undefined): string {
-  const trimmed = name?.trim();
-  if (trimmed) {
-    const parts = trimmed.split(/\s+/);
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-    }
-    return parts[0].slice(0, 2).toUpperCase();
-  }
-  const fromEmail = email?.trim().slice(0, 2).toUpperCase();
-  return fromEmail || '?';
-}
-
 export default function ProfileScreen() {
   const router = useRouter();
   const state = useProfileSummary();
+  const { refresh } = state;
+  const firstFocus = useRef(true);
+
+  // Ao voltar do editor de avatar (ou de qualquer tela), recarrega mantendo o conteúdo.
+  useFocusEffect(
+    useCallback(() => {
+      if (firstFocus.current) {
+        firstFocus.current = false;
+        return;
+      }
+      refresh();
+    }, [refresh]),
+  );
 
   return (
     <Screen state={state}>
       {(p) => {
-        const initials = getInitials(p.display_name, p.email);
         const isPremium = p.plan_tier === 'premium';
 
         return (
@@ -54,10 +55,19 @@ export default function ProfileScreen() {
             {/* Cabeçalho do usuário com botão Editar Perfil */}
             <View style={styles.userCard}>
               <View style={styles.userHeader}>
-                <View style={styles.avatar}>
-                  <Text variant="heading2" color="brandPrimaryLight">
-                    {initials}
-                  </Text>
+                <View style={styles.avatarWrap}>
+                  <Avatar config={toAvatarConfig(p.avatar_config)} size={layout.avatarProfile} />
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Editar avatar"
+                    onPress={() => router.push('/profile/avatar')}
+                    style={({ pressed }) => [
+                      styles.editBadge,
+                      { opacity: pressed ? opacity.pressed : 1 },
+                    ]}
+                  >
+                    <Icon name="pencil" color="textOnPrimary" size={spacing.xl} />
+                  </Pressable>
                 </View>
                 <View style={styles.userInfo}>
                   <Text variant="heading2" numberOfLines={1}>
@@ -215,22 +225,28 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
   },
   userHeader: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.lg,
+    gap: spacing.md,
   },
-  avatar: {
-    width: layout.avatarSize,
-    height: layout.avatarSize,
+  avatarWrap: {
+    width: layout.avatarProfile,
+    height: layout.avatarProfile,
+  },
+  editBadge: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    width: layout.minTouchTarget,
+    height: layout.minTouchTarget,
     borderRadius: radius.full,
-    backgroundColor: colors.brandPrimarySubtle,
-    borderWidth: 1,
-    borderColor: colors.brandPrimary,
+    backgroundColor: colors.brandPrimary,
+    borderWidth: layout.borderWidth * 3,
+    borderColor: colors.bgSurface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   userInfo: {
-    flex: 1,
+    alignItems: 'center',
     gap: spacing.xs,
   },
   card: {

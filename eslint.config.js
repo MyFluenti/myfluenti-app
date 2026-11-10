@@ -5,6 +5,7 @@ const expoConfig = require('eslint-config-expo/flat');
 module.exports = defineConfig([
   expoConfig,
   {
-    ignores: ['dist/*'],
+    // A fixture é cópia intocada do gerador de referência: não se reformata.
+    ignores: ['dist/*', 'src/**/__tests__/fixtures/**'],
   },
 ]);
