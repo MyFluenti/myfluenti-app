@@ -67,6 +67,18 @@ describe('render com clip: true', () => {
     );
   });
 
+  test.each(cases().map((c) => [c.name, c.cfg] as const))(
+    'o id do clipPath é o mesmo do url(#...): %s',
+    (_n, cfg) => {
+      const svg = render(cfg, 112, { clip: true });
+      const def = /<clipPath id="(mfa\d+)"/.exec(svg);
+      const use = /clip-path="url\(#(mfa\d+)\)"/.exec(svg);
+      expect(def).not.toBeNull();
+      expect(use).not.toBeNull();
+      expect(use![1]).toBe(def![1]);
+    },
+  );
+
   test('gera clipPath com id mfaN único por chamada', () => {
     const a = /clipPath id="(mfa\d+)"/.exec(render(DEFAULT, 10, { clip: true }));
     const b = /clipPath id="(mfa\d+)"/.exec(render(DEFAULT, 10, { clip: true }));
@@ -77,6 +89,17 @@ describe('render com clip: true', () => {
 });
 
 describe('render com clip: false', () => {
+  /** Referência sem o clip: tira <defs>...</defs> e troca <g clip-path=...> por <g>. */
+  const stripClip = (svg: string) =>
+    svg.replace(/<defs>.*?<\/defs>/, '').replace(/<g clip-path="url\(#mfa\d+\)">/, '<g>');
+
+  test.each(cases().map((c) => [c.name, c.cfg] as const))(
+    'igual à referência sem o clip: %s',
+    (_n, cfg) => {
+      expect(render(cfg, 112, { clip: false })).toBe(stripClip(reference.render(cfg, 112)));
+    },
+  );
+
   test.each(cases().map((c) => [c.name, c.cfg] as const))('sem defs nem clip-path: %s', (_n, cfg) => {
     const svg = render(cfg, 112, { clip: false });
     expect(svg).not.toMatch(/clipPath/i);
@@ -85,6 +108,25 @@ describe('render com clip: false', () => {
     expect(svg.startsWith('<svg')).toBe(true);
     expect(svg.endsWith('</svg>')).toBe(true);
   });
+});
+
+describe('render: label e config inválida', () => {
+  test('escapa o label no aria-label', () => {
+    for (const clip of [true, false]) {
+      const svg = render(DEFAULT, 10, { clip, label: 'a"><script' });
+      expect(svg).toContain('aria-label="a&quot;&gt;&lt;script"');
+      expect(svg).not.toContain('<script');
+    }
+    const all = render(DEFAULT, 10, { label: `&<>"'` });
+    expect(all).toContain('aria-label="&amp;&lt;&gt;&quot;&#39;"');
+  });
+
+  test.each([null, undefined, {}, { ...DEFAULT, skin: 9 }, 'x'])(
+    'config inválida desenha o DEFAULT: %p',
+    (bad) => {
+      expect(norm(render(bad, 112))).toBe(norm(render(DEFAULT, 112)));
+    },
+  );
 });
 
 describe('isValidAvatarConfig', () => {

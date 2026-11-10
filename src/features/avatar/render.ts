@@ -1,4 +1,5 @@
 import type { AvatarConfig } from './types';
+import { isValidAvatarConfig } from './validate';
 
 // Port fiel do gerador de referência (config -> string SVG).
 // As paletas são exclusivas do avatar: não entram nos tokens globais.
@@ -92,6 +93,15 @@ function accessory(kind: number): string {
   return '';
 }
 
+function escapeAttr(v: string): string {
+  return v
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export type RenderOptions = {
   /**
    * true: saída idêntica à do gerador de referência, com clipPath de id único (`mfaN`).
@@ -103,17 +113,18 @@ export type RenderOptions = {
 
 let uid = 0;
 
-/** Peças que faltam vêm de DEFAULT. É só o gerador de SVG: a validação é de `validate.ts`. */
+/** Só o gerador de SVG: config inválida (ou ausente) desenha o DEFAULT. */
 export function render(
-  cfg: Partial<AvatarConfig> | null | undefined,
+  cfg: unknown,
   size: number,
   { clip = true, label }: RenderOptions = {},
 ): string {
-  const c = { ...DEFAULT, ...(cfg ?? {}) };
+  // Defesa em profundidade: sem isso, índice fora da faixa geraria SVG com "undefined".
+  const c = isValidAvatarConfig(cfg) ? cfg : DEFAULT;
   const skin = SKIN[c.skin];
   const hair = HAIR[c.hairColor];
   let s =
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="' + size + '" height="' + size + '" role="img" aria-label="' + (label || 'Avatar') + '">';
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="' + size + '" height="' + size + '" role="img" aria-label="' + escapeAttr(label || 'Avatar') + '">';
   if (clip) {
     const id = 'mfa' + ++uid;
     s += '<defs><clipPath id="' + id + '"><circle cx="50" cy="50" r="50"/></clipPath></defs>';
