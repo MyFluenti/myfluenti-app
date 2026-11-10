@@ -16,8 +16,9 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { View } from 'react-native';
 
-import { LoadingState } from '@/components';
+import { ErrorState, LoadingState } from '@/components';
 import { AuthProvider, useAuth } from '@/features/auth/AuthProvider';
+import { OnboardingProvider, useOnboarding } from '@/features/onboarding/OnboardingProvider';
 import { colors, layout } from '@/theme/tokens';
 
 SplashScreen.preventAutoHideAsync();
@@ -25,8 +26,11 @@ SplashScreen.preventAutoHideAsync();
 // O Expo Router já fornece o SafeAreaProvider.
 function RootNavigator() {
   const { status } = useAuth();
+  const onboarding = useOnboarding();
 
-  if (status === 'loading') {
+  const signedIn = status === 'signed_in';
+
+  if (status === 'loading' || (signedIn && onboarding.status === 'loading')) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.bgBase, padding: layout.screenPaddingX }}>
         <LoadingState variant="spinner" />
@@ -34,7 +38,26 @@ function RootNavigator() {
     );
   }
 
-  const signedIn = status === 'signed_in';
+  if (signedIn && onboarding.status === 'error') {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.bgBase, padding: layout.screenPaddingX }}>
+        {onboarding.error?.kind === 'network' ? (
+          <ErrorState onRetry={onboarding.retry} />
+        ) : (
+          <ErrorState
+            title="Algo deu errado"
+            message={onboarding.error?.message}
+            onRetry={onboarding.retry}
+          />
+        )}
+      </View>
+    );
+  }
+
+  // Porta de entrada: sem sessão vai para Boas-vindas; com sessão e sem nível de partida
+  // escolhido vai para a autoavaliação. Cada grupo diz para onde mandar quem não pode entrar.
+  const onboarded = signedIn && onboarding.status === 'done';
+  const home = signedIn ? (onboarded ? '/' : '/onboarding/self-assessment') : '/welcome';
 
   return (
     <Stack
@@ -43,7 +66,7 @@ function RootNavigator() {
         contentStyle: { backgroundColor: colors.bgBase },
       }}
     >
-      <Stack.Protected guard={signedIn}>
+      <Stack.Protected guard={onboarded} redirectTo={home}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="course/[moduleId]" />
         <Stack.Screen name="library/[type]/[id]" />
@@ -55,7 +78,16 @@ function RootNavigator() {
         <Stack.Screen name="premium-module" />
         <Stack.Screen name="dev/showcase" />
       </Stack.Protected>
-      <Stack.Protected guard={!signedIn}>
+      <Stack.Protected guard={signedIn && !onboarded} redirectTo={home}>
+        <Stack.Screen name="onboarding/self-assessment" />
+      </Stack.Protected>
+      <Stack.Protected guard={signedIn} redirectTo={home}>
+        <Stack.Screen name="placement/intro" />
+        <Stack.Screen name="placement/[attemptId]" options={{ gestureEnabled: false }} />
+        <Stack.Screen name="placement/result" options={{ gestureEnabled: false }} />
+      </Stack.Protected>
+      <Stack.Protected guard={!signedIn} redirectTo={home}>
+        <Stack.Screen name="welcome" />
         <Stack.Screen name="sign-in" />
         <Stack.Screen name="sign-up" />
       </Stack.Protected>
@@ -88,8 +120,10 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      <StatusBar style="light" />
-      <RootNavigator />
+      <OnboardingProvider>
+        <StatusBar style="light" />
+        <RootNavigator />
+      </OnboardingProvider>
     </AuthProvider>
   );
 }

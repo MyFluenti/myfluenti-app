@@ -37,3 +37,4 @@ export {
 export { QuestionPromptData, type QuestionPromptDataProps } from './QuestionPromptData';
 export { TextAnswerInput, type TextAnswerInputProps } from './TextAnswerInput';
 export { WordOrderAnswer, joinTokens, type WordOrderAnswerProps } from './WordOrderAnswer';
+export { LogoMark, type LogoMarkProps } from './LogoMark';
