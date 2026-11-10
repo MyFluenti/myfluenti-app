@@ -1,4 +1,4 @@
-import { Link } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
@@ -9,6 +9,7 @@ import { useScrollFocusedFieldIntoView } from '@/features/common/KeyboardAwareSc
 import { toAppError } from '@/services/errors';
 
 export default function SignUpScreen() {
+  const router = useRouter();
   const { signUp } = useAuth();
   const scrollIntoView = useScrollFocusedFieldIntoView();
   const [name, setName] = useState('');
@@ -43,11 +44,12 @@ export default function SignUpScreen() {
         Criar conta
       </Text>
       <Text variant="bodyM" color="textSecondary">
-        Entenda como o inglês funciona.
+        Salve seu progresso e estude em qualquer aparelho.
       </Text>
       <View style={authStyles.form}>
         <Input
-          label="Nome (opcional)"
+          label="Nome"
+          placeholder="Como devemos te chamar"
           value={name}
           onChangeText={setName}
           editable={!loading}
@@ -55,6 +57,7 @@ export default function SignUpScreen() {
         />
         <Input
           label="E-mail"
+          placeholder="voce@email.com"
           type="email"
           value={email}
           onChangeText={setEmail}
@@ -63,12 +66,17 @@ export default function SignUpScreen() {
         />
         <Input
           label="Senha"
+          placeholder="Crie uma senha"
           type="password"
           value={password}
           onChangeText={setPassword}
           editable={!loading}
           onFocus={scrollIntoView}
           error={error}
+          returnKeyType="go"
+          onSubmitEditing={() => {
+            if (canSubmit && !loading) void submit();
+          }}
         />
         {notice ? (
           <Text variant="bodyM" color="statusSuccess" accessibilityLiveRegion="polite">
@@ -76,17 +84,16 @@ export default function SignUpScreen() {
           </Text>
         ) : null}
         <Button label="Criar conta" onPress={submit} loading={loading} disabled={!canSubmit} />
+        <Button
+          label="Já tenho conta"
+          variant="outline"
+          onPress={() => router.replace('/sign-in')}
+          disabled={loading}
+        />
       </View>
-      <Link
-        href="/sign-in"
-        style={authStyles.link}
-        accessibilityRole="link"
-        accessibilityLabel="Já tenho conta, entrar"
-      >
-        <Text variant="label" color="brandPrimaryLight">
-          Já tenho conta
-        </Text>
-      </Link>
+      <Text variant="caption" color="textSecondary" style={authStyles.footnote}>
+        Você pode excluir sua conta quando quiser, nas Configurações.
+      </Text>
     </AuthScreen>
   );
 }

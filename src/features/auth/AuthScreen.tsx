@@ -8,6 +8,7 @@ export const AuthScreen = KeyboardAwareScreen;
 
 export const authStyles = StyleSheet.create({
   form: { gap: spacing.lg, marginTop: spacing.lg },
+  footnote: { textAlign: 'center' },
   link: {
     alignSelf: 'center',
     minHeight: layout.minTouchTarget,
