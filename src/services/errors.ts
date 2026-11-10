@@ -169,6 +169,12 @@ export function unwrap<T>(result: { data: T | null; error: unknown }): T {
   return result.data;
 }
 
+/** Desembrulha uma contagem (`select(..., { count: 'exact', head: true })`). */
+export function unwrapCount(result: { count: number | null; error: unknown }): number {
+  if (result.error) throw toAppError(result.error);
+  return result.count ?? 0;
+}
+
 /** Para chamadas sem dados de retorno (void). */
 export function assertOk(result: { error: unknown }): void {
   if (result.error) throw toAppError(result.error);

@@ -1,6 +1,6 @@
 import type { FavoriteKind, FavoritesResult } from '@/types/contract';
 
-import { assertOk } from './errors';
+import { assertOk, unwrap } from './errors';
 import { rpc } from './rpc';
 import { requireUserId } from './session';
 import { supabase } from './supabase';
@@ -40,6 +40,18 @@ export async function toggleWordFavorite(vocabularyId: string, isFavorite: boole
       .eq('user_id', userId)
       .eq('vocabulary_id', vocabularyId),
   );
+}
+
+/** Dos ids informados, quais frases o aluno já favoritou. */
+export async function getFavoriteExampleIds(exampleIds: string[]): Promise<Set<string>> {
+  if (exampleIds.length === 0) return new Set();
+  const rows = unwrap(
+    await supabase
+      .from('user_favorite_examples')
+      .select('vocabulary_example_id')
+      .in('vocabulary_example_id', exampleIds),
+  );
+  return new Set(rows.map((r) => r.vocabulary_example_id));
 }
 
 export async function addPhraseFavorite(vocabularyExampleId: string): Promise<void> {
