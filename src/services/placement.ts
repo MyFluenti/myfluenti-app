@@ -1,5 +1,6 @@
 import type {
   AnswerPayload,
+  PlacementAnswerResult,
   PlacementAttemptRow,
   PlacementItems,
   PlacementResult,
@@ -22,17 +23,30 @@ export function getItems(attemptId: string): Promise<PlacementItems> {
   return rpc<PlacementItems>('get_placement_items', { p_attempt_id: attemptId });
 }
 
-/** Grava a resposta. O nivelamento não devolve correção durante o teste. */
-export function submitAnswer(
+/**
+ * Grava a resposta e devolve só se acertou (`{ is_correct }`, migration 012): sem
+ * resposta certa, explicação ou pontos. Devolve `null` se o backend não mandar o
+ * acerto (versão anterior à 012, que devolvia void): o teste segue sem o aviso.
+ */
+export async function submitAnswer(
   attemptId: string,
   questionId: string,
   answer: AnswerPayload,
-): Promise<void> {
-  return rpcVoid('submit_placement_answer', {
+): Promise<PlacementAnswerResult | null> {
+  const result = await supabase.rpc('submit_placement_answer', {
     p_attempt_id: attemptId,
     p_question_id: questionId,
     p_answer: answer,
-  });
+  } as never);
+  assertOk(result);
+  return parsePlacementAnswer(result.data);
+}
+
+/** Lê `{ is_correct: boolean }`; qualquer outra coisa vira `null`. */
+export function parsePlacementAnswer(data: unknown): PlacementAnswerResult | null {
+  if (typeof data !== 'object' || data === null || Array.isArray(data)) return null;
+  const value = (data as Record<string, unknown>).is_correct;
+  return typeof value === 'boolean' ? { is_correct: value } : null;
 }
 
 export function finish(attemptId: string): Promise<PlacementResult> {

@@ -132,6 +132,9 @@ export default function PlacementIntroScreen() {
         <Text variant="bodyL" color="textSecondary">
           Responda com calma. Se não souber, tudo bem.
         </Text>
+        <Text variant="bodyM" color="textSecondary">
+          As perguntas ficam mais difíceis. Errar no final é esperado.
+        </Text>
       </View>
       <View style={styles.list}>
         {FACTS.map((fact) => (
