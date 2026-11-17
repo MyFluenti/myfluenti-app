@@ -3,6 +3,9 @@ import type { PlacementAnswerResult } from '@/types/contract';
 /** Quanto tempo o aviso fica na tela antes de ir para a próxima pergunta. */
 export const PLACEMENT_FEEDBACK_MS = 900;
 
+/** Com leitor de tela ligado, o aviso fica mais tempo (dá tempo de ouvir antes de mudar). */
+export const PLACEMENT_FEEDBACK_SCREEN_READER_MS = 2000;
+
 export type PlacementFeedback = {
   tone: 'success' | 'neutral';
   /** Texto curto mostrado na tela e anunciado ao leitor de tela. */

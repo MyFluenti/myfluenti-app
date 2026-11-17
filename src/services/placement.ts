@@ -6,6 +6,8 @@ import type {
   PlacementResult,
 } from '@/types/contract';
 
+import type { Database } from '@/types/database';
+
 import { assertOk } from './errors';
 import { rpc, rpcVoid } from './rpc';
 import { supabase } from './supabase';
@@ -33,11 +35,12 @@ export async function submitAnswer(
   questionId: string,
   answer: AnswerPayload,
 ): Promise<PlacementAnswerResult | null> {
-  const result = await supabase.rpc('submit_placement_answer', {
+  const args = {
     p_attempt_id: attemptId,
     p_question_id: questionId,
     p_answer: answer,
-  } as never);
+  } satisfies Database['public']['Functions']['submit_placement_answer']['Args'];
+  const result = await supabase.rpc('submit_placement_answer', args);
   assertOk(result);
   return parsePlacementAnswer(result.data);
 }

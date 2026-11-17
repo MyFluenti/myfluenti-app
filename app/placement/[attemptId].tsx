@@ -1,12 +1,13 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo, Pressable, StyleSheet, View } from 'react-native';
+import { AccessibilityInfo, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { Button, ErrorState, Icon, LoadingState, ProgressBar, Text } from '@/components';
 import { FlowScreen } from '@/features/common/FlowScreen';
 import { useExitGuard } from '@/features/common/useExitGuard';
 import {
   PLACEMENT_FEEDBACK_MS,
+  PLACEMENT_FEEDBACK_SCREEN_READER_MS,
   onCorrectPlacementAnswer,
   placementFeedback,
   type PlacementFeedback,
@@ -124,9 +125,15 @@ export default function PlacementQuestionScreen() {
         // movimento") e anuncia para o leitor de tela; depois segue.
         setBusy('feedback');
         setFeedback(shown);
-        AccessibilityInfo.announceForAccessibility(shown.text);
+        // No Android e na web o aviso já é lido pela live region; anunciar de novo
+        // faria o TalkBack falar duas vezes. No iOS a live region não existe.
+        if (Platform.OS === 'ios') AccessibilityInfo.announceForAccessibility(shown.text);
         if (result?.is_correct) onCorrectPlacementAnswer();
-        await new Promise((resolve) => setTimeout(resolve, PLACEMENT_FEEDBACK_MS));
+        // Com leitor de tela, o aviso fica mais tempo para dar tempo de ouvir.
+        const reading = await AccessibilityInfo.isScreenReaderEnabled().catch(() => false);
+        await new Promise((resolve) =>
+          setTimeout(resolve, reading ? PLACEMENT_FEEDBACK_SCREEN_READER_MS : PLACEMENT_FEEDBACK_MS),
+        );
         if (!onScreen.current) return;
         setFeedback(null);
       }
