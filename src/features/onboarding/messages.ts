@@ -27,6 +27,13 @@ function formatDay(date: Date): string {
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 }
 
+function formatTime(date: Date): string {
+  return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
+const sameLocalDay = (a: Date, b: Date) =>
+  a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
 /**
  * Carência do nivelamento (migration 013): o backend decide o prazo e manda a data em que
  * o próximo teste libera. O app só conta os dias até ela e mostra a data.
@@ -35,10 +42,15 @@ export function retryTooSoonMessage(
   availableAt: string | null,
   now: Date,
   format: (date: Date) => string = formatDay,
+  time: (date: Date) => string = formatTime,
 ): string {
   const when = availableAt ? new Date(availableAt) : null;
   if (!when || Number.isNaN(when.getTime())) {
     return 'O próximo teste de nivelamento ainda não está disponível. Tente de novo em alguns dias.';
+  }
+  // Libera hoje (no fuso do aparelho): mostra a hora, para não dizer "em 1 dia" à toa.
+  if (sameLocalDay(when, now)) {
+    return `O próximo teste de nivelamento fica disponível hoje, a partir das ${time(when)}.`;
   }
   const days = Math.max(1, Math.ceil((when.getTime() - now.getTime()) / DAY_MS));
   return `O próximo teste de nivelamento fica disponível em ${days} ${days === 1 ? 'dia' : 'dias'} (a partir de ${format(when)}).`;

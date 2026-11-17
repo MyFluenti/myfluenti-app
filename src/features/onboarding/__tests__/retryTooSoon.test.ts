@@ -30,9 +30,19 @@ describe('retryTooSoonMessage', () => {
   });
 
   it('rounds a partial day up and uses the singular', () => {
-    const now = new Date('2026-11-24T10:00:00Z');
-    expect(retryTooSoonMessage(iso, now, fmt)).toBe(
+    // Datas locais, para o teste valer em qualquer fuso.
+    const now = new Date(2026, 10, 23, 22, 0);
+    const when = new Date(2026, 10, 24, 19, 36).toISOString();
+    expect(retryTooSoonMessage(when, now, fmt)).toBe(
       'O próximo teste de nivelamento fica disponível em 1 dia (a partir de 24/11).',
+    );
+  });
+
+  it('shows the time when it opens later today', () => {
+    const now = new Date(2026, 10, 24, 10, 0);
+    const when = new Date(2026, 10, 24, 19, 36).toISOString();
+    expect(retryTooSoonMessage(when, now, fmt, () => '19:36')).toBe(
+      'O próximo teste de nivelamento fica disponível hoje, a partir das 19:36.',
     );
   });
 
