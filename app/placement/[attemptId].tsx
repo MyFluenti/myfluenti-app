@@ -1,10 +1,17 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { AccessibilityInfo, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { Button, ErrorState, Icon, LoadingState, ProgressBar, Text } from '@/components';
 import { FlowScreen } from '@/features/common/FlowScreen';
 import { useExitGuard } from '@/features/common/useExitGuard';
+import {
+  PLACEMENT_FEEDBACK_MS,
+  PLACEMENT_FEEDBACK_SCREEN_READER_MS,
+  onCorrectPlacementAnswer,
+  placementFeedback,
+  type PlacementFeedback,
+} from '@/features/onboarding/answerFeedback';
 import { placementErrorMessage } from '@/features/onboarding/messages';
 import { QuestionAnswerInput } from '@/features/questions/QuestionAnswerInput';
 import {
@@ -16,7 +23,7 @@ import {
 import { useAsync } from '@/hooks/useAsync';
 import { toAppError } from '@/services/errors';
 import * as placement from '@/services/placement';
-import { layout, opacity, spacing } from '@/theme/tokens';
+import { colors, layout, opacity, radius, spacing } from '@/theme/tokens';
 
 const COMPETENCY_LABELS: Record<string, string> = {
   vocabulary: 'Vocabulário',
@@ -27,8 +34,9 @@ const COMPETENCY_LABELS: Record<string, string> = {
 
 /**
  * Tela 02: perguntas do nivelamento. Mostra só os itens ainda não respondidos, um por vez,
- * sem correção e sem voltar. Sair no meio é seguro: ao voltar, retoma do primeiro não
- * respondido (`get_placement_items`).
+ * sem voltar. Depois de cada resposta, mostra por um instante só o acerto que a RPC
+ * devolve ("Certo!" ou um aviso neutro), sem resposta certa nem explicação. Sair no meio
+ * é seguro: ao voltar, retoma do primeiro não respondido (`get_placement_items`).
  */
 export default function PlacementQuestionScreen() {
   const router = useRouter();
@@ -38,7 +46,8 @@ export default function PlacementQuestionScreen() {
   // Respondidas nesta tela (além das que já vieram com answered: true).
   const [answeredNow, setAnsweredNow] = useState<Set<string>>(() => new Set());
   const [draft, setDraft] = useState<AnswerDraft>(EMPTY_DRAFT);
-  const [busy, setBusy] = useState<'answer' | 'finish' | null>(null);
+  const [busy, setBusy] = useState<'answer' | 'feedback' | 'finish' | null>(null);
+  const [feedback, setFeedback] = useState<PlacementFeedback | null>(null);
   const [error, setError] = useState<string | undefined>();
 
   // Tentativa já encerrada: o resultado está gravado, só mostra.
@@ -55,7 +64,12 @@ export default function PlacementQuestionScreen() {
 
   // Toda pergunta pede confirmação para sair (✕, voltar do Android, gesto do iOS):
   // "Sair" só descarta a resposta ainda não enviada. Ir para o resultado não pede.
-  const { sheet, allowLeave } = useExitGuard(!closed && current !== null, 'test');
+  const { sheet, allowLeave, sheetOpen, leavingRef } = useExitGuard(!closed && current !== null, 'test');
+  // O aviso de acerto espera a folha "Sair do teste?" fechar antes de avançar.
+  const sheetOpenRef = useRef(false);
+  useEffect(() => {
+    sheetOpenRef.current = sheetOpen;
+  }, [sheetOpen]);
 
   const replaceWithResult = useCallback(
     () => router.replace({ pathname: '/placement/result', params: { attemptId } }),
@@ -109,7 +123,30 @@ export default function PlacementQuestionScreen() {
     setError(undefined);
     setBusy('answer');
     try {
-      await placement.submitAnswer(attemptId, current.question.id, payload);
+      const result = await placement.submitAnswer(attemptId, current.question.id, payload);
+      const shown = placementFeedback(result);
+      if (shown) {
+        // Mostra o acerto por um instante (sem animação, então vale com "reduzir
+        // movimento") e anuncia para o leitor de tela; depois segue.
+        setBusy('feedback');
+        setFeedback(shown);
+        // No Android e na web o aviso já é lido pela live region; anunciar de novo
+        // faria o TalkBack falar duas vezes. No iOS a live region não existe.
+        if (Platform.OS === 'ios') AccessibilityInfo.announceForAccessibility(shown.text);
+        if (result?.is_correct) onCorrectPlacementAnswer();
+        // Com leitor de tela, o aviso fica mais tempo para dar tempo de ouvir.
+        const reading = await AccessibilityInfo.isScreenReaderEnabled().catch(() => false);
+        await new Promise((resolve) =>
+          setTimeout(resolve, reading ? PLACEMENT_FEEDBACK_SCREEN_READER_MS : PLACEMENT_FEEDBACK_MS),
+        );
+        // Folha de saída aberta: pausa. Se o aluno sair, a tela desmonta e para aqui;
+        // se fechar sem sair, segue para a próxima a partir da pergunta atual.
+        while (sheetOpenRef.current && onScreen.current) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+        if (!onScreen.current || leavingRef.current) return;
+        setFeedback(null);
+      }
       setAnsweredNow((prev) => new Set(prev).add(current.question.id));
       setDraft(EMPTY_DRAFT);
       if (pending.length === 1) {
@@ -225,6 +262,22 @@ export default function PlacementQuestionScreen() {
       footer={
         <>
           {errorText}
+          {feedback ? (
+            <View
+              style={[
+                styles.feedback,
+                feedback.tone === 'success' ? styles.feedbackSuccess : styles.feedbackNeutral,
+              ]}
+              accessibilityLiveRegion="polite"
+            >
+              <Text
+                variant="heading3"
+                color={feedback.tone === 'success' ? 'statusSuccess' : 'textSecondary'}
+              >
+                {feedback.text}
+              </Text>
+            </View>
+          ) : null}
           <Button
             label="Responder"
             onPress={submit}
@@ -259,6 +312,21 @@ export default function PlacementQuestionScreen() {
 }
 
 const styles = StyleSheet.create({
+  feedback: {
+    borderWidth: layout.borderWidth,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+  },
+  feedbackSuccess: {
+    backgroundColor: colors.statusSuccessSubtle,
+    borderColor: colors.statusSuccess,
+  },
+  feedbackNeutral: {
+    backgroundColor: colors.bgElevated,
+    borderColor: colors.borderDefault,
+  },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',

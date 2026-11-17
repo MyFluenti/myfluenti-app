@@ -48,6 +48,15 @@ export default function PlacementIntroScreen() {
       const attemptId = await placement.start();
       router.push({ pathname: '/placement/[attemptId]', params: { attemptId } });
     } catch (e) {
+      // Na porta de entrada, a carência quer dizer que o teste já foi feito (ex.: saiu na
+      // tela de resultado sem escolher o nível): abre o resultado gravado, como o "Agora não".
+      if (onboarding && toAppError(e).kind === 'placement_retry_too_soon') {
+        const finishedAttemptId = await placement.getLatestCompletedAttemptId().catch(() => null);
+        if (finishedAttemptId) {
+          router.push({ pathname: '/placement/result', params: { attemptId: finishedAttemptId } });
+          return;
+        }
+      }
       setError(placementErrorMessage(e));
     } finally {
       setBusy(null);
@@ -131,6 +140,9 @@ export default function PlacementIntroScreen() {
         </Text>
         <Text variant="bodyL" color="textSecondary">
           Responda com calma. Se não souber, tudo bem.
+        </Text>
+        <Text variant="bodyM" color="textSecondary">
+          As perguntas ficam mais difíceis. Errar no final é esperado.
         </Text>
       </View>
       <View style={styles.list}>

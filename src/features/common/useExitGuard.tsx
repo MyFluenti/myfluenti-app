@@ -30,7 +30,12 @@ export function useExitGuard(enabled: boolean, kind: keyof typeof EXIT_COPY) {
     dispatch({ type: 'stay' });
   };
 
+  // "Sair" escolhido: a tela pode continuar montada durante a animação de saída, então
+  // quem espera a folha fechar precisa saber que não é para seguir.
+  const leavingRef = useRef(false);
+
   const leave = () => {
+    leavingRef.current = true;
     const repeat = repeatRef.current;
     repeatRef.current = null;
     dispatch({ type: 'leave' });
@@ -55,5 +60,8 @@ export function useExitGuard(enabled: boolean, kind: keyof typeof EXIT_COPY) {
     />
   );
 
-  return { sheet, allowLeave };
+  /** Folha aberta: a tela pode pausar o que avança sozinho até o aluno decidir. */
+  const sheetOpen = state.pending !== null;
+
+  return { sheet, allowLeave, sheetOpen, leavingRef };
 }

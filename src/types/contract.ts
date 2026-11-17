@@ -60,6 +60,9 @@ export type PlacementAttemptRow = {
 
 export type Level = { id: string; code: string; title: string; position: number };
 
+/** Retorno de `submit_placement_answer` (migration 012): só o acerto, sem gabarito. */
+export type PlacementAnswerResult = { is_correct: boolean };
+
 export type LessonAnswerResult = {
   is_correct: boolean;
   awarded_points: number;
