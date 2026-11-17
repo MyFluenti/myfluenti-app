@@ -64,7 +64,12 @@ export default function PlacementQuestionScreen() {
 
   // Toda pergunta pede confirmação para sair (✕, voltar do Android, gesto do iOS):
   // "Sair" só descarta a resposta ainda não enviada. Ir para o resultado não pede.
-  const { sheet, allowLeave } = useExitGuard(!closed && current !== null, 'test');
+  const { sheet, allowLeave, sheetOpen } = useExitGuard(!closed && current !== null, 'test');
+  // O aviso de acerto espera a folha "Sair do teste?" fechar antes de avançar.
+  const sheetOpenRef = useRef(false);
+  useEffect(() => {
+    sheetOpenRef.current = sheetOpen;
+  }, [sheetOpen]);
 
   const replaceWithResult = useCallback(
     () => router.replace({ pathname: '/placement/result', params: { attemptId } }),
@@ -134,6 +139,11 @@ export default function PlacementQuestionScreen() {
         await new Promise((resolve) =>
           setTimeout(resolve, reading ? PLACEMENT_FEEDBACK_SCREEN_READER_MS : PLACEMENT_FEEDBACK_MS),
         );
+        // Folha de saída aberta: pausa. Se o aluno sair, a tela desmonta e para aqui;
+        // se fechar sem sair, segue para a próxima a partir da pergunta atual.
+        while (sheetOpenRef.current && onScreen.current) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
         if (!onScreen.current) return;
         setFeedback(null);
       }

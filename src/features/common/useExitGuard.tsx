@@ -55,5 +55,8 @@ export function useExitGuard(enabled: boolean, kind: keyof typeof EXIT_COPY) {
     />
   );
 
-  return { sheet, allowLeave };
+  /** Folha aberta: a tela pode pausar o que avança sozinho até o aluno decidir. */
+  const sheetOpen = state.pending !== null;
+
+  return { sheet, allowLeave, sheetOpen };
 }

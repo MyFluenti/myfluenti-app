@@ -34,6 +34,8 @@ export type AppErrorInfo =
   | { kind: 'email_taken' }
   | { kind: 'invalid_email' }
   | { kind: 'invalid_display_name' }
+  /** Carência do nivelamento (migration 013). `availableAt` vem do backend (ISO 8601). */
+  | { kind: 'placement_retry_too_soon'; availableAt: string | null }
   | { kind: 'known'; code: KnownCode }
   | { kind: 'unknown'; code?: string };
 
@@ -65,6 +67,7 @@ const MESSAGES: Record<Exclude<AppErrorKind, 'known'>, string> = {
   module_locked: 'Conclua as aulas obrigatórias do módulo anterior para liberar este.',
   premium_required: 'Disponível no plano Premium',
   rating_required: 'Escolha como foi para você: Difícil, Bom ou Fácil.',
+  placement_retry_too_soon: 'O próximo teste de nivelamento ainda não está disponível.',
   not_authenticated: 'Sua sessão expirou. Entre de novo para continuar.',
   network: 'Sem conexão. Verifique sua internet e tente de novo.',
   invalid_credentials: 'E-mail ou senha incorretos.',
@@ -88,6 +91,11 @@ export class AppError extends Error {
     return this.info.kind;
   }
 
+  /** Data em que o próximo nivelamento libera, como o backend mandou (carência). */
+  get availableAt(): string | null {
+    return this.info.kind === 'placement_retry_too_soon' ? this.info.availableAt : null;
+  }
+
   /** Código original do contrato (kind 'known') ou do erro (kind 'unknown'). */
   get code(): string | undefined {
     return this.info.kind === 'known' || this.info.kind === 'unknown' ? this.info.code : undefined;
@@ -101,6 +109,7 @@ export function isAppError(e: unknown): e is AppError {
 type ErrorLike = {
   message?: unknown;
   code?: unknown;
+  hint?: unknown;
   status?: unknown;
   name?: unknown;
 };
@@ -148,6 +157,14 @@ export function toAppError(error: unknown): AppError {
   if (message === 'module_locked') return new AppError({ kind: 'module_locked' });
   if (message === 'premium_required') return new AppError({ kind: 'premium_required' });
   if (message === 'rating_required') return new AppError({ kind: 'rating_required' });
+  if (message === 'placement_retry_too_soon') {
+    // O hint traz a data liberada (ISO 8601 UTC); o app só a exibe, não calcula o prazo.
+    const hint = typeof e.hint === 'string' ? e.hint.trim() : '';
+    return new AppError({
+      kind: 'placement_retry_too_soon',
+      availableAt: hint && !Number.isNaN(Date.parse(hint)) ? hint : null,
+    });
+  }
   // Sem JWT o anon recebe 42501 "permission denied for function ..." (sem EXECUTE).
   const anonDenied = code === '42501' && /^permission denied for function/i.test(message);
   if (code === '28000' || code === 'PGRST301' || status === 401 || anonDenied) {
