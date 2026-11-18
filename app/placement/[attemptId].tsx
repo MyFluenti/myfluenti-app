@@ -266,13 +266,13 @@ export default function PlacementQuestionScreen() {
             <View
               style={[
                 styles.feedback,
-                feedback.tone === 'success' ? styles.feedbackSuccess : styles.feedbackNeutral,
+                feedback.tone === 'success' ? styles.feedbackSuccess : styles.feedbackError,
               ]}
               accessibilityLiveRegion="polite"
             >
               <Text
                 variant="heading3"
-                color={feedback.tone === 'success' ? 'statusSuccess' : 'textSecondary'}
+                color={feedback.tone === 'success' ? 'statusSuccess' : 'statusError'}
               >
                 {feedback.text}
               </Text>
@@ -323,9 +323,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.statusSuccessSubtle,
     borderColor: colors.statusSuccess,
   },
-  feedbackNeutral: {
-    backgroundColor: colors.bgElevated,
-    borderColor: colors.borderDefault,
+  feedbackError: {
+    backgroundColor: colors.statusErrorSubtle,
+    borderColor: colors.statusError,
   },
   titleRow: {
     flexDirection: 'row',

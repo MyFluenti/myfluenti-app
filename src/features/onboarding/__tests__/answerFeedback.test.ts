@@ -28,10 +28,10 @@ describe('placementFeedback', () => {
     expect(placementFeedback({ is_correct: true })).toEqual({ tone: 'success', text: 'Certo!' });
   });
 
-  it('shows a neutral notice on a wrong answer, without the answer key or "Errado"', () => {
+  it('marks a wrong answer as "Incorreto" in red, without the answer key', () => {
     const feedback = placementFeedback({ is_correct: false });
-    expect(feedback?.tone).toBe('neutral');
-    expect(feedback?.text).not.toMatch(/errad|resposta certa|correta/i);
+    expect(feedback).toEqual({ tone: 'error', text: 'Incorreto' });
+    expect(feedback?.text).not.toMatch(/resposta certa|correta/i);
   });
 
   it('shows nothing when the backend did not send the result', () => {
