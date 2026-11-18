@@ -7,21 +7,22 @@ export const PLACEMENT_FEEDBACK_MS = 900;
 export const PLACEMENT_FEEDBACK_SCREEN_READER_MS = 2000;
 
 export type PlacementFeedback = {
-  tone: 'success' | 'neutral';
+  tone: 'success' | 'error';
   /** Texto curto mostrado na tela e anunciado ao leitor de tela. */
   text: string;
 };
 
 /**
- * Aviso depois de responder no nivelamento (decisão do Gabriel, 10/11). Só mostra o que
- * a RPC devolveu: "Certo!" no acerto; no erro, um aviso neutro, sem a resposta certa e
- * sem "Errado!". `null` (backend sem o acerto) não mostra nada.
+ * Aviso depois de responder no nivelamento (ADR 0005). Só mostra o que a RPC devolveu:
+ * "Certo!" em verde no acerto; "Incorreto" em vermelho no erro (decisão do Gabriel,
+ * 17/11, igual à aula e à revisão), sem a resposta certa. `null` (backend sem o acerto)
+ * não mostra nada.
  */
 export function placementFeedback(result: PlacementAnswerResult | null): PlacementFeedback | null {
   if (!result) return null;
   return result.is_correct
     ? { tone: 'success', text: 'Certo!' }
-    : { tone: 'neutral', text: 'Resposta registrada.' };
+    : { tone: 'error', text: 'Incorreto' };
 }
 
 /**
