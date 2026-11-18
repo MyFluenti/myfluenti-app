@@ -56,8 +56,12 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
       .catch((e: unknown) => {
         if (!active) return;
         const appError = toAppError(e);
-        if (appError.kind === 'not_authenticated') {
-          // Volta às Boas-vindas. Se nem isso der certo, mostra o erro em vez do spinner.
+        // Sessão inválida, ou sessão válida de uma conta que não existe mais (o perfil nasce
+        // com a conta e só some com ela, ex.: conta excluída em outro aparelho enquanto o
+        // token não expirou): volta às Boas-vindas.
+        const accountGone = appError.kind === 'known' && appError.code === 'profile_not_found';
+        if (appError.kind === 'not_authenticated' || accountGone) {
+          // Se nem isso der certo, mostra o erro em vez do spinner.
           signOutLocal().catch(() => {
             if (!active) return;
             setError(appError);
