@@ -247,18 +247,16 @@ export function WelcomeContent() {
 
 /**
  * Tela 49: a animação de primeira abertura, 3,8 s. Um toque em qualquer lugar pula para
- * o estado final. Os botões só recebem toque depois de aparecer. `onFinish` roda ao fim
- * ou ao pular (marca como vista).
+ * o estado final. Os botões só recebem toque depois de aparecer. A flag de "já vista" não
+ * é gravada aqui: ela vem do primeiro login (`markWelcomeAnimationSeen`).
  */
 export function WelcomeIntro({
   renderActions,
-  onFinish,
 }: {
   renderActions: (active: { primary: boolean; secondary: boolean }) => {
     primary: ReactNode;
     secondary: ReactNode;
   };
-  onFinish: () => void;
 }) {
   const skip = useSharedValue(0);
   const [done, setDone] = useState(false);
@@ -268,19 +266,15 @@ export function WelcomeIntro({
     const timers = [
       setTimeout(() => setActive((a) => ({ ...a, primary: true })), PRIMARY_BUTTON_IN.activeAt),
       setTimeout(() => setActive((a) => ({ ...a, secondary: true })), SECONDARY_BUTTON_IN.activeAt),
-      setTimeout(() => {
-        setDone(true);
-        onFinish();
-      }, INTRO_TOTAL_MS),
+      setTimeout(() => setDone(true), INTRO_TOTAL_MS),
     ];
     return () => timers.forEach(clearTimeout);
-  }, [onFinish]);
+  }, []);
 
   const skipNow = () => {
     skip.value = 1;
     setActive({ primary: true, secondary: true });
     setDone(true);
-    onFinish();
   };
 
   const actions = renderActions(active);

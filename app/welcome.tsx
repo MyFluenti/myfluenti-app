@@ -11,12 +11,13 @@ import { WelcomeContent, WelcomeIntro } from '@/features/welcome/WelcomeIntro';
 import { spacing } from '@/theme/tokens';
 
 /**
- * Tela 01: Boas-vindas. Primeira tela sem sessão. Na primeira abertura do aparelho toca a
- * animação da tela 49 (com "reduzir movimento", só um fade); depois, fica parada.
+ * Tela 01: Boas-vindas. Primeira tela sem sessão. Até a pessoa entrar ou criar conta pela
+ * primeira vez no aparelho, toca a animação da tela 49 (com "reduzir movimento", só um
+ * fade); depois disso, fica parada.
  */
 export default function WelcomeScreen() {
   const router = useRouter();
-  const { mode, finish } = useWelcomeIntro();
+  const { mode } = useWelcomeIntro();
 
   const signUp = () => router.push('/sign-up');
   const signIn = () => router.push('/sign-in');
@@ -26,7 +27,6 @@ export default function WelcomeScreen() {
   if (mode === 'animate') {
     return (
       <WelcomeIntro
-        onFinish={finish}
         renderActions={() => ({
           primary: <Button label="Começar" onPress={signUp} />,
           secondary: <Button label="Já tenho conta" variant="outline" onPress={signIn} />,
@@ -37,7 +37,7 @@ export default function WelcomeScreen() {
 
   return (
     <FlowScreen centered>
-      <FadeIn enabled={mode === 'fade'} onDone={finish}>
+      <FadeIn enabled={mode === 'fade'}>
         <WelcomeContent />
         <View style={styles.actions}>
           <Button label="Começar" onPress={signUp} />
@@ -48,22 +48,13 @@ export default function WelcomeScreen() {
   );
 }
 
-/** "Reduzir movimento": só um fade curto da tela inteira; marca a animação como vista. */
-function FadeIn({
-  enabled,
-  onDone,
-  children,
-}: {
-  enabled: boolean;
-  onDone: () => void;
-  children: React.ReactNode;
-}) {
+/** "Reduzir movimento": só um fade curto da tela inteira. */
+function FadeIn({ enabled, children }: { enabled: boolean; children: React.ReactNode }) {
   const opacity = useSharedValue(enabled ? 0 : 1);
   useEffect(() => {
     if (!enabled) return;
     opacity.value = withTiming(1, { duration: REDUCED_FADE_MS });
-    onDone();
-  }, [enabled, onDone, opacity]);
+  }, [enabled, opacity]);
   const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
   return <Animated.View style={style}>{children}</Animated.View>;
 }
