@@ -19,6 +19,8 @@ export const colors = {
   textOnPrimary: '#101116',
   /** Véu atrás de folhas inferiores e diálogos (bgBase com transparência). */
   scrim: 'rgba(16, 17, 22, 0.72)',
+  /** brandPrimary a 60%: borda do balão escuro da animação de boas-vindas. */
+  brandPrimaryBorder: 'rgba(139, 120, 246, 0.6)',
 } as const;
 
 export const spacing = {
@@ -72,6 +74,8 @@ export const typography = {
   bodyL: { fontFamily: fontFamilies.inter[400], fontSize: 16, lineHeight: 24 },
   bodyM: { fontFamily: fontFamilies.inter[400], fontSize: 14, lineHeight: 20 },
   label: { fontFamily: fontFamilies.inter[600], fontSize: 13, lineHeight: 16 },
+  /** Balões da animação de boas-vindas (Inter SemiBold 14). */
+  balloon: { fontFamily: fontFamilies.inter[600], fontSize: 14, lineHeight: 20 },
   caption: { fontFamily: fontFamilies.inter[500], fontSize: 12, lineHeight: 16 },
 } as const;
 
@@ -102,6 +106,10 @@ export const layout = {
   formItemMinWidth: 100,
   sheetHandleWidth: 40,
   sheetHandleHeight: 4,
+  /** Brilho atrás do logo na animação de boas-vindas (tela 49). */
+  welcomeGlowSize: 380,
+  balloonPaddingX: 14,
+  balloonPaddingY: 8,
 } as const;
 
 // Opacidade só para feedback de toque (pressed). Estado desabilitado usa cores, não opacidade.
