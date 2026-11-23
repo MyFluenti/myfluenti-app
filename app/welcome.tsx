@@ -11,9 +11,8 @@ import { WelcomeContent, WelcomeIntro } from '@/features/welcome/WelcomeIntro';
 import { spacing } from '@/theme/tokens';
 
 /**
- * Tela 01: Boas-vindas. Primeira tela sem sessão. Até a pessoa entrar ou criar conta pela
- * primeira vez no aparelho, toca a animação da tela 49 (com "reduzir movimento", só um
- * fade); depois disso, fica parada.
+ * Tela 01: Boas-vindas. Primeira tela sem sessão. Toda vez que aparece, toca a animação da
+ * tela 49 (com "reduzir movimento", só um fade).
  */
 export default function WelcomeScreen() {
   const router = useRouter();
@@ -21,8 +20,6 @@ export default function WelcomeScreen() {
 
   const signUp = () => router.push('/sign-up');
   const signIn = () => router.push('/sign-in');
-
-  if (mode === 'loading') return <FlowScreen centered>{null}</FlowScreen>;
 
   if (mode === 'animate') {
     return (
@@ -37,7 +34,7 @@ export default function WelcomeScreen() {
 
   return (
     <FlowScreen centered>
-      <FadeIn enabled={mode === 'fade'}>
+      <FadeIn>
         <WelcomeContent />
         <View style={styles.actions}>
           <Button label="Começar" onPress={signUp} />
@@ -49,12 +46,11 @@ export default function WelcomeScreen() {
 }
 
 /** "Reduzir movimento": só um fade curto da tela inteira. */
-function FadeIn({ enabled, children }: { enabled: boolean; children: React.ReactNode }) {
-  const opacity = useSharedValue(enabled ? 0 : 1);
+function FadeIn({ children }: { children: React.ReactNode }) {
+  const opacity = useSharedValue(0);
   useEffect(() => {
-    if (!enabled) return;
     opacity.value = withTiming(1, { duration: REDUCED_FADE_MS });
-  }, [enabled, opacity]);
+  }, [opacity]);
   const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
   return <Animated.View style={style}>{children}</Animated.View>;
 }

@@ -2,7 +2,6 @@ import type { Session, User } from '@supabase/supabase-js';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 
-import { markWelcomeAnimationSeen } from '@/features/welcome/useWelcomeIntro';
 import { deleteMyAccount } from '@/services/account';
 import * as auth from '@/services/auth';
 import { isAppError } from '@/services/errors';
@@ -59,12 +58,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       subscription.unsubscribe();
     };
   }, []);
-
-  // Primeira sessão no aparelho (entrou, criou conta ou já estava logado): as Boas-vindas
-  // deixam de tocar a animação de primeira abertura.
-  useEffect(() => {
-    if (status === 'signed_in') void markWelcomeAnimationSeen();
-  }, [status]);
 
   const signIn = useCallback(async (email: string, password: string) => {
     await auth.signIn(email, password);

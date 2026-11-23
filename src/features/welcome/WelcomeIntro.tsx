@@ -246,9 +246,9 @@ export function WelcomeContent() {
 }
 
 /**
- * Tela 49: a animação de primeira abertura, 3,8 s. Um toque em qualquer lugar pula para
- * o estado final. Os botões só recebem toque depois de aparecer. A flag de "já vista" não
- * é gravada aqui: ela vem do primeiro login (`markWelcomeAnimationSeen`).
+ * Tela 49: a animação de abertura das Boas-vindas, 3,8 s, tocada toda vez que a tela aparece
+ * sem sessão. Um toque em qualquer lugar pula para o estado final. Os botões só recebem
+ * toque depois de aparecer.
  */
 export function WelcomeIntro({
   renderActions,

@@ -1,7 +1,7 @@
 import { Easing } from 'react-native-reanimated';
 
 /**
- * Animação de primeira abertura das Boas-vindas (tela 49). Fonte de verdade:
+ * Animação de abertura das Boas-vindas (tela 49). Fonte de verdade:
  * myfluenti-docs/docs/marca/animacoes/boas-vindas.md. Tempos em milissegundos.
  * Tudo aqui pode ser ajustado no aparelho sem mexer no componente.
  */
